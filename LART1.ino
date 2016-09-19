@@ -1,3 +1,4 @@
+#include <LiquidCrystal_I2C.h>
 #include <LibAPRS.h>
 #include <TinyGPSplus.h>
 
@@ -10,13 +11,17 @@
 #define CALLSIGN "W1AW"
 #define SSID 5
 
-#define UPDATE_BEACON 60000
+#define UPDATE_BEACON 10000
 long lastupdate = 0 ;
 
+int sent_count=0 ;
+
+
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
 
 #define BUTTON_SENDLOC_PIN A3
 #define BUTTON_SENDLOC_WINDOW 300
-int button_sendloc_state = 1 ;
+int button_sendloc_state = 0 ;
 
 void check_sendloc()
 {
@@ -80,7 +85,7 @@ void locationUpdate(char *lat, char *lon,int height = 0 ,int power=1, int gain=1
    APRS_setGain(gain);
    APRS_setDirectivity(dir);
 
-   char *comment = "LibAPRS location update" ;
+   char *comment = "LART/1 Beacon" ;
    APRS_sendLoc(comment, strlen(comment));
 }
 
@@ -89,19 +94,30 @@ void setup()
 {
    Serial.begin(9600) ;
 
+   lcd.begin(16,2);
+   lcd.home();
+   lcd.print("LART/1 APRS BEAC"); 
+   lcd.setCursor(0,1);
+   lcd.print("Call: ") ;
+   lcd.print(CALLSIGN) ;
+   lcd.print("-") ;
+   lcd.print(SSID) ;
+
+
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
    APRS_printSettings();
 
    pinMode(BUTTON_SENDLOC_PIN, INPUT_PULLUP);
 
-   Serial.println(F("APRS Beacon Start")) ;
+   Serial.println(F("LART1 APRS Beacon Start")) ;
    Serial.print(F("Version: ")) ;
    Serial.println(VERSION) ;
    Serial.print(F("Callsign ")) ;
    Serial.print(CALLSIGN) ;
    Serial.print(F(" SSID: ")) ;
    Serial.println(SSID) ;
+
 
 }
 
@@ -119,20 +135,31 @@ void loop()
          // this sends a fixed location only
          // beta beta beta
          // dublin QTH
-         char * lat = "374226.46N" ;
-         char * lon = "1215738.98W" ;
+         char * lat =  "3742.26N" ;
+         char * lon = "12157.38W" ;
          int h = 234 ;
 
          locationUpdate(lat,lon,h) ;
+         sent_count++ ;
          Serial.print(F("sent lat: ")) ;
          Serial.print(lat) ;
          Serial.print(F(" lon: "));
          Serial.print(lon);
          Serial.print(F(" height: ")) ;
          Serial.println(h) ;
+         Serial.print(F(" count: ")) ;
+         Serial.println(sent_count) ;
       } else {
-         Serial.print(F("sent location disabled")) ;
+         Serial.print(F("sent location disabled\n")) ;
       }
+
+      lcd.clear();
+      lcd.home();
+      lcd.print("Send Location ") ;
+      lcd.print(sent_count) ;
    }
+
+
+
 
 }
