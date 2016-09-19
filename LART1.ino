@@ -1,7 +1,7 @@
 #include <LibAPRS.h>
 #include <TinyGPSplus.h>
 
-#define VERSION "$ID$"
+#define VERSION "Beta-0.1"
 
 #define ADC_REFERENCE REF_5V
 
@@ -95,12 +95,12 @@ void setup()
 
    pinMode(BUTTON_SENDLOC_PIN,INPUT_PULLUP);
 
-   Serial.println("APRS Beacon Start") ;
-   Serial.print("Version: ") ;
+   Serial.println(F("APRS Beacon Start")) ;
+   Serial.print(F("Version: ")) ;
    Serial.println(Version) ;
-   Serial.print("Callsign ") ;
+   Serial.print(F("Callsign ")) ;
    Serial.print(CALLSIGN) ;
-   Serial.print(" SSID: ") ;
+   Serial.print(F(" SSID: ")) ;
    Serial.println(SSID) ;
 
 }
@@ -124,14 +124,14 @@ void loop()
          int h = 234 ;
 
          locationUpdate(lat,lon,h) ;
-         Serial.print("sent lat:") ;
+         Serial.print(F("sent lat: ")) ;
          Serial.print(lat) ;
-         Serial.print(" lon:");
+         Serial.print(F(" lon: "));
          Serial.print(lon);
-         Serial.print(" height:") ;
+         Serial.print(F(" height: ")) ;
          Serial.println(h) ;
       } else {
-         Serial.print("sent location disabled") ;
+         Serial.print(F("sent location disabled")) ;
       }
    }
 
