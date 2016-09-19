@@ -1,6 +1,8 @@
 #include <LibAPRS.h>
 #include <TinyGPSplus.h>
 
+#define VERSION "$ID$"
+
 #define ADC_REFERENCE REF_5V
 
 #define OPEN_SQUELCH false
@@ -94,6 +96,8 @@ void setup()
    pinMode(BUTTON_SENDLOC_PIN,INPUT_PULLUP);
 
    Serial.println("APRS Beacon Start") ;
+   Serial.print("Version: ") ;
+   Serial.println(Version) ;
    Serial.print("Callsign ") ;
    Serial.print(CALLSIGN) ;
    Serial.print(" SSID: ") ;
