@@ -36,7 +36,7 @@ void aprs_msg_callback(struct AX25Msg *msg)
 {
    if(!gotPacket) {
       gotPacket = true ;
-      memcpy(&incomingPacket,msg,sizeof(AX25Msg));
+      memcpy(&incomingPacket, msg, sizeof(AX25Msg));
       if (freeMemory() > msg->len) {
          packetData = (uint8_t*) malloc(msg->len);
          memcpy(packetData,msg->info,msg->len);
@@ -81,7 +81,7 @@ void locationUpdate(char *lat, char *lon,int height = 0 ,int power=1, int gain=1
    APRS_setDirectivity(dir);
 
    char *comment = "LibAPRS location update" ;
-   APRS_sendLoc(comment,strlen(comment));
+   APRS_sendLoc(comment, strlen(comment));
 }
 
 
@@ -89,15 +89,15 @@ void setup()
 {
    Serial.begin(9600) ;
 
-   APRS_init(ADC_REFERENCE,OPEN_SQUELCH);
-   APRS_setCallsign(CALLSIGN,SSID);
+   APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
+   APRS_setCallsign(CALLSIGN, SSID);
    APRS_printSettings();
 
-   pinMode(BUTTON_SENDLOC_PIN,INPUT_PULLUP);
+   pinMode(BUTTON_SENDLOC_PIN, INPUT_PULLUP);
 
    Serial.println(F("APRS Beacon Start")) ;
    Serial.print(F("Version: ")) ;
-   Serial.println(Version) ;
+   Serial.println(VERSION) ;
    Serial.print(F("Callsign ")) ;
    Serial.print(CALLSIGN) ;
    Serial.print(F(" SSID: ")) ;
