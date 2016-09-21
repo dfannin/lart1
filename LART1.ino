@@ -1,37 +1,27 @@
 #include <LiquidCrystal_I2C.h>
 #include <LibAPRS.h>
 #include <TinyGPSplus.h>
+#include <DRA818.h>
 
-#define VERSION "Beta-0.1"
+#define VERSION "Beta-0.2"
 
 #define ADC_REFERENCE REF_5V
 
 #define OPEN_SQUELCH false
 
-#define CALLSIGN "W1AW"
+#define CALLSIGN "NOCALL"
 #define SSID 5
+#define PTT 3 
+#define FREQ 144.39
+#define UPDATE_BEACON 60000
 
-#define UPDATE_BEACON 10000
 long lastupdate = 0 ;
 
 int sent_count=0 ;
 
-
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
 
-#define BUTTON_SENDLOC_PIN A3
-#define BUTTON_SENDLOC_WINDOW 300
-int button_sendloc_state = 0 ;
-
-void check_sendloc()
-{
-   static long button_sendloc_lastupdate = 0 ;
-
-   if ( (millis() - button_sendloc_lastupdate) > BUTTON_SENDLOC_WINDOW ) {
-      button_sendloc_lastupdate = millis() ;
-      button_sendloc_state = digitalRead(BUTTON_SENDLOC_PIN) ;
-   }
-}
+DRA818 dra(&Serial, PTT);
 
 boolean gotPacket = false ;
 AX25Msg incomingPacket;
@@ -57,20 +47,18 @@ void processPacket()
 {
    if(gotPacket) {
       gotPacket = false ;
-      Serial.print(F("Received APRS packet. SRC: "));
-      Serial.print(incomingPacket.src.call);
-      Serial.print(F("-"));
-      Serial.print(incomingPacket.src.ssid);
-      Serial.print(F(". DST: "));
-      Serial.print(incomingPacket.dst.call);
-      Serial.print(F("-"));
-      Serial.print(incomingPacket.dst.ssid);
-      Serial.print(F(". Data: "));
 
-      for (int i = 0; i < incomingPacket.len; i++) {
-         Serial.write(incomingPacket.info[i]);
-      }
-      Serial.println("");
+      lcd.clear();
+      lcd.print(F("Pkt Rcv S:")) ; 
+      lcd.print(incomingPacket.src.call) ; 
+      lcd.print(F("-")) ; 
+      lcd.print(incomingPacket.src.ssid) ; 
+      lcd.setCursor(0,1);
+      lcd.print(F("D:")) ; 
+      lcd.print(incomingPacket.dst.call) ; 
+      lcd.print(F("-")) ; 
+      lcd.print(incomingPacket.dst.ssid) ; 
+
       free(packetData) ;
    }
 }
@@ -85,7 +73,7 @@ void locationUpdate(char *lat, char *lon,int height = 0 ,int power=1, int gain=1
    APRS_setGain(gain);
    APRS_setDirectivity(dir);
 
-   char *comment = "LART/1 Beacon" ;
+   char *comment = "LART-1 Tracker" ;
    APRS_sendLoc(comment, strlen(comment));
 }
 
@@ -95,7 +83,7 @@ void setup()
    Serial.begin(9600) ;
 
    lcd.begin(16,2);
-   lcd.home();
+   lcd.clear();
    lcd.print("LART/1 APRS BEAC"); 
    lcd.setCursor(0,1);
    lcd.print("Call: ") ;
@@ -103,21 +91,43 @@ void setup()
    lcd.print("-") ;
    lcd.print(SSID) ;
 
+   delay(3000) ;
+
+   // DRA818 Setup
+   dra.setFreq(FREQ);
+   dra.setTXCTCSS(0);
+   dra.setSquelch(2);
+   dra.setRXCTCSS(0);
+   dra.writeFreq();
+   dra.setVolume(6);
+   dra.setFilters(true, true, true);
+
+   lcd.clear();
+   lcd.print("F:") ;
+   lcd.print(FREQ) ;
+   lcd.setCursor(0,1) ;
+   lcd.print(" TC:") ;
+   lcd.print(0) ;
+   lcd.print(" RC:") ;
+   lcd.print(0) ;
+   delay(3000) ;
 
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
-   APRS_printSettings();
+   // APRS_setDestination();
+   APRS_setPath1("WIDE1",1);
+   APRS_setPath2("WIDE2",1);
+   // APRS_printSettings();
 
-   pinMode(BUTTON_SENDLOC_PIN, INPUT_PULLUP);
 
-   Serial.println(F("LART1 APRS Beacon Start")) ;
-   Serial.print(F("Version: ")) ;
-   Serial.println(VERSION) ;
-   Serial.print(F("Callsign ")) ;
-   Serial.print(CALLSIGN) ;
-   Serial.print(F(" SSID: ")) ;
-   Serial.println(SSID) ;
 
+   lcd.clear();
+   lcd.print("APRS setup") ;
+   delay(3000) ;
+
+   lcd.clear();
+   lcd.print("Beacon Mode Start") ;
+   delay(3000) ;
 
 }
 
@@ -125,13 +135,10 @@ void setup()
 void loop()
 {
 
-
    processPacket() ;
-
 
    if ( millis() - lastupdate > UPDATE_BEACON ) {
       lastupdate = millis() ;
-      if ( !button_sendloc_state ) {
          // this sends a fixed location only
          // beta beta beta
          // dublin QTH
@@ -141,25 +148,9 @@ void loop()
 
          locationUpdate(lat,lon,h) ;
          sent_count++ ;
-         Serial.print(F("sent lat: ")) ;
-         Serial.print(lat) ;
-         Serial.print(F(" lon: "));
-         Serial.print(lon);
-         Serial.print(F(" height: ")) ;
-         Serial.println(h) ;
-         Serial.print(F(" count: ")) ;
-         Serial.println(sent_count) ;
-      } else {
-         Serial.print(F("sent location disabled\n")) ;
-      }
-
-      lcd.clear();
-      lcd.home();
-      lcd.print("Send Location ") ;
-      lcd.print(sent_count) ;
+         lcd.clear();
+         lcd.print("loc pkg sent: ") ;
+         lcd.print(sent_count) ;
    }
-
-
-
 
 }
