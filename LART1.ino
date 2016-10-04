@@ -3,27 +3,39 @@
 #include <TinyGPSplus.h>
 #include <DRA818.h>
 
-#define VERSION "Beta-0.2"
+#define VERSION "Beta-0.93"
 
 #define ADC_REFERENCE REF_5V
 
 #define OPEN_SQUELCH false
 
-#define CALLSIGN "NOCALL"
-#define SSID 5
+#define OPTION_LCD  true
+
+#define CALLSIGN "KK6DF"
+#define SSID 2
 #define PTT 3 
 #define FREQ 144.39
-#define UPDATE_BEACON 60000
+#define UPDATE_BEACON 120000L
+#define UPDATE_BEACON_INIT  10000L 
 
-long lastupdate = 0 ;
+#define NOP __asm__ __volatile__("nop\n\t")
+
+int beacon_init_count = 10 ;
+
+unsigned long update_beacon = UPDATE_BEACON_INIT ;
+
+unsigned long lastupdate = 0 ;
 
 int sent_count=0 ;
 
+#ifdef OPTION_LCD
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
+#endif 
 
 DRA818 dra(&Serial, PTT);
 
 boolean gotPacket = false ;
+int recv_count = 0 ;
 AX25Msg incomingPacket;
 uint8_t *packetData;
 
@@ -47,29 +59,18 @@ void processPacket()
 {
    if(gotPacket) {
       gotPacket = false ;
-
-      lcd.clear();
-      lcd.print(F("Pkt Rcv S:")) ; 
-      lcd.print(incomingPacket.src.call) ; 
-      lcd.print(F("-")) ; 
-      lcd.print(incomingPacket.src.ssid) ; 
-      lcd.setCursor(0,1);
-      lcd.print(F("D:")) ; 
-      lcd.print(incomingPacket.dst.call) ; 
-      lcd.print(F("-")) ; 
-      lcd.print(incomingPacket.dst.ssid) ; 
-
+      recv_count++ ;
       free(packetData) ;
    }
 }
 
 
-void locationUpdate(char *lat, char *lon,int height = 0 ,int power=1, int gain=1, int dir=0)
+void locationUpdate(const char *lat, const char *lon,int height = 0 ,int power=1, int gain=0, int dir=0)
 {
    APRS_setLat(lat);
    APRS_setLon(lon);
-   APRS_setPower(power);
    APRS_setHeight(height);
+   APRS_setPower(power);
    APRS_setGain(gain);
    APRS_setDirectivity(dir);
 
@@ -78,56 +79,92 @@ void locationUpdate(char *lat, char *lon,int height = 0 ,int power=1, int gain=1
 }
 
 
+void mydelay(unsigned long msec) {
+    unsigned long future = millis() + msec ;
+    while ( (future - millis()) > 0 ) {
+        NOP ;
+    } ;
+    return ;  
+}
+
+
 void setup()
 {
-   Serial.begin(9600) ;
 
+   mydelay(1000UL) ;
+#ifdef OPTION_LCD
    lcd.begin(16,2);
    lcd.clear();
-   lcd.print("LART/1 APRS BEAC"); 
+   lcd.print(F("LART/1 APRS BEAC")); 
    lcd.setCursor(0,1);
-   lcd.print("Call: ") ;
+   lcd.print(F("Call: ")) ;
    lcd.print(CALLSIGN) ;
    lcd.print("-") ;
    lcd.print(SSID) ;
-
-   delay(3000) ;
-
+#endif
+   Serial.begin(9600) ;
+   mydelay(2000UL) ;
+#ifdef OPTION_LCD
+   lcd.clear();
+   lcd.print(F("Version:"));
+   lcd.setCursor(0,1);
+   lcd.print(VERSION);
+#endif
+   mydelay(1000UL);
    // DRA818 Setup
+   // must set these, then call WriteFreq
    dra.setFreq(FREQ);
    dra.setTXCTCSS(0);
-   dra.setSquelch(2);
+   dra.setSquelch(5);
    dra.setRXCTCSS(0);
+   dra.setBW(0); // 0 = 12.5k, 1 = 25k
    dra.writeFreq();
-   dra.setVolume(6);
-   dra.setFilters(true, true, true);
-
+   mydelay(3000UL);
+#ifdef OPTION_LCD
    lcd.clear();
-   lcd.print("F:") ;
+   lcd.print(F("Freq Set"));
+#endif 
+   dra.setVolume(1);
+   mydelay(3000UL);
+#ifdef OPTION_LCD
+   lcd.clear();
+   lcd.print(F("Vol Set"));
+#endif
+   dra.setFilters(false, true, true);
+   mydelay(3000UL);
+   lcd.clear();
+   lcd.print(F("Filter Set"));
+   dra.setPTT(LOW);
+   mydelay(3000UL);
+#ifdef OPTION_LCD
+   lcd.clear();
+   lcd.print(F("F:")) ;
    lcd.print(FREQ) ;
    lcd.setCursor(0,1) ;
-   lcd.print(" TC:") ;
+   lcd.print(F(" TC: ")) ;
    lcd.print(0) ;
-   lcd.print(" RC:") ;
+   lcd.print(F(" RC: ")) ;
    lcd.print(0) ;
-   delay(3000) ;
+#endif
+   mydelay(2000UL) ;
 
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
-   // APRS_setDestination();
+   APRS_setDestination("APZMDM",0);
    APRS_setPath1("WIDE1",1);
    APRS_setPath2("WIDE2",1);
-   // APRS_printSettings();
+   APRS_setPreamble(350L);
+   APRS_setTail(50L);
+   APRS_setSymbol('n');
 
-
-
+#ifdef OPTION_LCD
    lcd.clear();
-   lcd.print("APRS setup") ;
-   delay(3000) ;
-
+   lcd.print(F("APRS setup")) ;
+   mydelay(2000UL) ;
    lcd.clear();
-   lcd.print("Beacon Mode Start") ;
-   delay(3000) ;
+   lcd.print(F("Setup Complete")) ;
+#endif
+   mydelay(2000UL) ;
 
 }
 
@@ -135,22 +172,41 @@ void setup()
 void loop()
 {
 
-   processPacket() ;
 
-   if ( millis() - lastupdate > UPDATE_BEACON ) {
-      lastupdate = millis() ;
-         // this sends a fixed location only
-         // beta beta beta
-         // dublin QTH
-         char * lat =  "3742.26N" ;
-         char * lon = "12157.38W" ;
-         int h = 234 ;
+   if ( millis() - lastupdate > update_beacon ) {
+     lastupdate = millis() ;
+     if ( beacon_init_count-- <= -1 ) {
+        update_beacon = UPDATE_BEACON ;
+     }
+     // this sends a fixed location only
+     // beta beta beta
+     // dublin QTH
+     // const char * lat =  "3742.44N" ;
+     // const char * lon = "12157.54W" ;
+     // 
+     // igate
+     const char * lat =  "3740.91N" ;
+     const char * lon = "12146.05W" ;
+     int h = 0 ;
 
-         locationUpdate(lat,lon,h) ;
-         sent_count++ ;
-         lcd.clear();
-         lcd.print("loc pkg sent: ") ;
-         lcd.print(sent_count) ;
+#ifdef OPTION_LCD
+     lcd.clear();
+     lcd.print(F("sending packet"));
+#endif
+     locationUpdate(lat,lon,h,1,0,0) ;
+     // mydelay(250UL);
+     // dra.setPTT(LOW);
+     sent_count++ ;
+#ifdef OPTION_LCD
+     lcd.clear();
+     lcd.print(F("sent: ")) ;
+     lcd.print(sent_count) ;
+     lcd.setCursor(0,1);
+     lcd.print(F("recv: ")) ;
+     lcd.print(recv_count) ;
+#endif
    }
+
+   processPacket() ;
 
 }
