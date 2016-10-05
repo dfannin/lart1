@@ -2,8 +2,9 @@
 #include <LibAPRS.h>
 #include <TinyGPSplus.h>
 #include <DRA818.h>
+#include <SoftwareSerial.h>
 
-#define VERSION "Beta-0.93"
+#define VERSION "Beta-0.96g"
 
 #define ADC_REFERENCE REF_5V
 
@@ -20,7 +21,7 @@
 
 #define NOP __asm__ __volatile__("nop\n\t")
 
-int beacon_init_count = 10 ;
+int beacon_init_count = 100 ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
@@ -32,7 +33,15 @@ int sent_count=0 ;
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
 #endif 
 
-DRA818 dra(&Serial, PTT);
+// GPS setup
+
+TinyGPSPlus gps ;
+
+// DRA818 setup
+#define DRA_RXD A1
+#define DRA_TXD A2
+SoftwareSerial dra_serial(DRA_RXD,DRA_TXD);
+DRA818 dra(&dra_serial, PTT);
 
 boolean gotPacket = false ;
 int recv_count = 0 ;
@@ -102,7 +111,10 @@ void setup()
    lcd.print("-") ;
    lcd.print(SSID) ;
 #endif
-   Serial.begin(9600) ;
+
+   dra_serial.begin(9600);
+   Serial.begin(4800) ;
+
    mydelay(2000UL) ;
 #ifdef OPTION_LCD
    lcd.clear();
@@ -168,43 +180,76 @@ void setup()
 
 }
 
+char  lat[] =  "0000.00N" ;
+char  lon[] = "00000.00W" ;
+int h = 0 ;
 
 void loop()
 {
 
+
+   while(Serial.available() > 0 ) {
+       if(gps.encode(Serial.read())) {
+           if( gps.location.isValid()) {
+
+               // latitude
+               if ( gps.location.rawLat().negative ) {
+                   dtostrf(-100* gps.location.lat(),7,2,lat) ;
+                   lat[7] = 'S';
+               } else {
+                   dtostrf(100*gps.location.lat(),7,2,lat) ;
+                   lat[7] = 'N';
+               }
+               // longitude
+               if ( gps.location.rawLng().negative ) {
+                   dtostrf(-100*gps.location.lng(),8,2,lon) ;
+                   lon[8] = 'W';
+               } else {
+                   dtostrf(100*gps.location.lng(),8,2,lon) ;
+                   lon[8] = 'E';
+               }
+
+           }
+
+           // altitude 
+           if ( gps.altitude.isValid() ) {
+               h = (int) gps.altitude.meters() ;
+           }
+
+       }
+   }
 
    if ( millis() - lastupdate > update_beacon ) {
      lastupdate = millis() ;
      if ( beacon_init_count-- <= -1 ) {
         update_beacon = UPDATE_BEACON ;
      }
-     // this sends a fixed location only
-     // beta beta beta
-     // dublin QTH
      // const char * lat =  "3742.44N" ;
      // const char * lon = "12157.54W" ;
      // 
-     // igate
-     const char * lat =  "3740.91N" ;
-     const char * lon = "12146.05W" ;
-     int h = 0 ;
 
+     if ( gps.location.isValid() )  {
 #ifdef OPTION_LCD
-     lcd.clear();
-     lcd.print(F("sending packet"));
+         lcd.clear();
+         lcd.print(F("sending packet"));
 #endif
-     locationUpdate(lat,lon,h,1,0,0) ;
-     // mydelay(250UL);
-     // dra.setPTT(LOW);
-     sent_count++ ;
+         locationUpdate(lat,lon,h,1,0,0) ;
+         // mydelay(250UL);
+         // dra.setPTT(LOW);
+         sent_count++ ;
 #ifdef OPTION_LCD
-     lcd.clear();
-     lcd.print(F("sent: ")) ;
-     lcd.print(sent_count) ;
-     lcd.setCursor(0,1);
-     lcd.print(F("recv: ")) ;
-     lcd.print(recv_count) ;
+         lcd.clear();
+         lcd.print(F("s: ")) ;
+         lcd.print(sent_count) ;
+         lcd.print(F(" r: ")) ;
+         lcd.print(recv_count) ;
+         lcd.setCursor(0,1);
+         lcd.print(lat) ;
 #endif
+     } else {
+         lcd.clear();
+         lcd.print(F("gps not ready")) ;
+     } 
    }
 
    processPacket() ;
