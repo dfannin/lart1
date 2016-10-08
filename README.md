@@ -23,5 +23,3 @@ requires the following libraries to be installed in your Arduino Sketchbook `lib
 # Status
 This software is beta software, and is still in major update mode.
 
-# Building
-The Arduino IDE can be used to build and upload the firmware.  Alternatively, if you have a Linux avrdude/arduino.mk environment installed, you can use the attached Makefile to build and upload the firmware without the arduino IDE.
