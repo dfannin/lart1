@@ -96,6 +96,16 @@ void mydelay(unsigned long msec) {
     return ;  
 }
 
+double  ddtodmh(float dd) {
+
+    double  value = dd ;
+    double  degrees =  floor(value) ;
+    value = ( value - degrees ) * 60  ;
+    double  minutes =  floor(value ) ; 
+    value =  (value - minutes) ;
+    return ( degrees*100 ) + minutes + value ; 
+}
+
 
 void setup()
 {
@@ -191,21 +201,25 @@ void loop()
    while(Serial.available() > 0 ) {
        if(gps.encode(Serial.read())) {
            if( gps.location.isValid()) {
-
+              double dmh ; 
                // latitude
                if ( gps.location.rawLat().negative ) {
-                   dtostrf(-100* gps.location.lat(),7,2,lat) ;
+                   dmh = ddtodmh( -gps.location.lat() )  ;
+                   dtostrf(dmh,7,2,lat) ;
                    lat[7] = 'S';
                } else {
-                   dtostrf(100*gps.location.lat(),7,2,lat) ;
+                   dmh = ddtodmh( gps.location.lat() )  ;
+                   dtostrf(dmh,7,2,lat) ;
                    lat[7] = 'N';
                }
                // longitude
                if ( gps.location.rawLng().negative ) {
-                   dtostrf(-100*gps.location.lng(),8,2,lon) ;
+                   dmh = ddtodmh( -gps.location.lng() )  ;
+                   dtostrf(dmh,8,2,lon) ;
                    lon[8] = 'W';
                } else {
-                   dtostrf(100*gps.location.lng(),8,2,lon) ;
+                   dmh = ddtodmh(gps.location.lng() )  ;
+                   dtostrf(dmh,8,2,lon) ;
                    lon[8] = 'E';
                }
 

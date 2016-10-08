@@ -1,0 +1,33 @@
+Partlist exported from /home/dfannin/src/eagleproject/MicroModem/LART1-v2.sch at 10/7/16 11:05 PM
+
+Qty Value             Device                Package      Parts             Description                          
+3   0.1uF             C-US025-024X044       C025-024X044 C2, C7, C9        CAPACITOR, American symbol           
+2   100k              R-US_0204/2V          0204V        R1, R2            RESISTOR, American symbol            
+2   10k               R-US_0204/2V          0204V        R4, R7            RESISTOR, American symbol            
+1   10uF              CPOL-USE2-5           E2-5         C3                POLARIZED CAPACITOR, American symbol 
+1   18k               R-US_0204/2V          0204V        R5                RESISTOR, American symbol            
+1   1K trim           R-TRIMM3296Y          RTRIM3296Y   R6                Trimm resistor                       
+1   1N4001            DIODEPTH              DIODE-1N4001 D1                Diode                                
+1   1k                R-US_0204/2V          0204V        R12               RESISTOR, American symbol            
+1   1uF               C-US025-024X044       C025-024X044 C1                CAPACITOR, American symbol           
+1   1uF EC            CPOL-USE2-5           E2-5         C10               POLARIZED CAPACITOR, American symbol 
+1   2.2k              R-US_0204/2V          0204V        R10               RESISTOR, American symbol            
+4   270               R-US_0204/2V          0204V        R8, R13, R14, R15 RESISTOR, American symbol            
+1   2N7000            MOSFET-NCHANNEL2N7000 TO-92        Q1                Common NMOSFET Parts                 
+1   3.9k              R-US_0204/2V          0204V        R11               RESISTOR, American symbol            
+2   37p               C-USC1206             C1206        C4, C5            CAPACITOR, American symbol           
+1   4.7k              R-US_0204/2V          0204V        R3                RESISTOR, American symbol            
+2   4.7uF EC          CPOL-USE2-5           E2-5         C6, C8            POLARIZED CAPACITOR, American symbol 
+1   45nH              L-USL1206             L1206        L1                INDUCTOR, American symbol            
+1   7805T             7805T                 TO220H       IC1               Positive VOLTAGE REGULATOR           
+1   8.2k              R-US_0204/2V          0204V        R9                RESISTOR, American symbol            
+1   Extra Pwr         M02PTH                1X02         JP7               Header 2                             
+1   GPS Pwr           M02PTH                1X02         JP5               Header 2                             
+1   GPS Serial        M02PTH                1X02         JP3               Header 2                             
+1   I2C Compass/3Axis M02PTH                1X02         JP8               Header 2                             
+1   LED               M04PTH                1X04         JP2               Header 4                             
+2   M15               M15                   1X15         JP6, JP9          Header 15                            
+1   Pwr Input         M02PTH                1X02         JP1               Header 2                             
+1   SA818             SA818                 SA818        U1                SA818 VHF/UHF Module                 
+1   SMA               SMACONNECTOR          SMA90_DIP    X1                SMA Connector                        
+1   i2C LCD           M02PTH                1X02         JP4               Header 2                             
