@@ -1,31 +1,64 @@
-#include <LiquidCrystal_I2C.h>
-#include <LibAPRS.h>
-#include <TinyGPSplus.h>
-#include <DRA818.h>
-#include <SoftwareSerial.h>
 
-#define VERSION "Beta-0.96g"
+#if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__) 
+#define TARGET_CPU m328p
+#endif
+
+#if defined(__AVR_ATmega2560__) 
+#define TARGET_CPU mega2560
+#endif
+
+#include "Arduino.h" 
+#include "LiquidCrystal_I2C.h"
+#include "LibAPRS.h"
+#include "TinyGPSplus.h"
+#include "DRA818.h"
+
+#if TARGET_CPU == mega2560
+#define MEGA 1
+#endif
+
+#ifndef MEGA 
+#include "SoftwareSerial.h"
+#endif
+
+#define VERSION "Beta-0.995m"
 
 #define ADC_REFERENCE REF_5V
-
 #define OPEN_SQUELCH false
 
 #define OPTION_LCD  true
-
 #define CALLSIGN "KK6DF"
 #define SSID 2
+
+#ifdef MEGA
+#define PTT 25
+#else
 #define PTT 3 
+#endif
+
 #define FREQ 144.39
-#define UPDATE_BEACON 120000L
-#define UPDATE_BEACON_INIT  10000L 
+#define UPDATE_BEACON 300000L
+#define UPDATE_BEACON_INIT  60000L
 
 #define NOP __asm__ __volatile__("nop\n\t")
 
-int beacon_init_count = 100 ;
+#ifdef MEGA
+HardwareSerial  * serialgps  = &Serial1 ;
+HardwareSerial  * serialdb   = &Serial ;
+#else
+HardwareSerial *serialgps = &Serial; 
+#endif
+
+
+int beacon_init_count = 1 ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
 unsigned long lastupdate = 0 ;
+
+#define UPDATE_DISPLAY 60000L 
+unsigned long lastupdatedisplay = 0 ;
+bool forcedisplay = false ;
 
 int sent_count=0 ;
 
@@ -38,10 +71,16 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE);
 TinyGPSPlus gps ;
 
 // DRA818 setup
+#ifdef MEGA 
+HardwareSerial * dra_serial = &Serial2 ;
+#else
 #define DRA_RXD A1
 #define DRA_TXD A2
-SoftwareSerial dra_serial(DRA_RXD,DRA_TXD);
-DRA818 dra(&dra_serial, PTT);
+SoftwareSerial dra818_serial(DRA_RXD,DRA_TXD);
+SoftwareSerial * dra_serial  = &dra818_serial;
+#endif
+
+DRA818 dra(dra_serial, PTT);
 
 boolean gotPacket = false ;
 int recv_count = 0 ;
@@ -69,9 +108,55 @@ void processPacket()
    if(gotPacket) {
       gotPacket = false ;
       recv_count++ ;
+#ifdef MEGA
+      if( gps.date.isValid() ) {
+          serialdb->print(gps.date.year()) ;
+          serialdb->print("-") ;
+          serialdb->print(gps.date.month()) ;
+          serialdb->print("-") ;
+          serialdb->print(gps.date.day()) ;
+          serialdb->print(" ") ;
+          serialdb->print(gps.time.hour()) ;
+          serialdb->print(":") ;
+          serialdb->print(gps.time.minute()) ;
+          serialdb->print(":") ;
+          serialdb->print(gps.time.second()) ;
+          serialdb->print(" ") ;
+      }
+
+      serialdb->print(F("Received Packet s:"));
+      serialdb->print(incomingPacket.src.call);
+      serialdb->print(F("-")) ;
+      serialdb->print(incomingPacket.src.ssid);
+      serialdb->print(F(" d:")) ;
+      serialdb->print(incomingPacket.dst.call);
+      serialdb->print(F("-")) ;
+      serialdb->print(incomingPacket.dst.ssid);
+
+      for(int i = 0; i < incomingPacket.rpt_count ; i++) {
+        serialdb->print(F(" r:")) ;
+        serialdb->print(incomingPacket.rpt_list[i].call);
+        serialdb->print(F("-")) ;
+        serialdb->print(incomingPacket.rpt_list[i].ssid);
+      }
+
+      serialdb->print(F(" data:")) ;
+      for(int i = 0; i < incomingPacket.len; i++) {
+          serialdb->print( (char) incomingPacket.info[i]) ;
+      }
+      serialdb->println("") ;
+#endif
+
       free(packetData) ;
+
+#ifdef MEGA
+      serialdb->print(F("Free Ram:")) ;
+      serialdb->println(freeMemory()) ;
+#endif
+
    }
 }
+
 
 
 void locationUpdate(const char *lat, const char *lon,int height = 0 ,int power=1, int gain=0, int dir=0)
@@ -122,8 +207,23 @@ void setup()
    lcd.print(SSID) ;
 #endif
 
-   dra_serial.begin(9600);
-   Serial.begin(4800) ;
+#ifdef MEGA
+   dra_serial->begin(9600) ;
+   serialgps->begin(4800) ;
+   serialdb->begin(9600) ;
+#else
+   dra_serial->begin(9600);
+   serialgps->begin(4800) ;
+#endif
+
+#ifdef MEGA
+   serialdb->println(F("LART/1 APRS Beacon")) ;
+   serialdb->print(CALLSIGN) ;
+   serialdb->print("-") ;
+   serialdb->println(SSID) ;
+   serialdb->print(F("Version:"));
+   serialdb->println(VERSION);
+#endif 
 
    mydelay(2000UL) ;
 #ifdef OPTION_LCD
@@ -135,9 +235,30 @@ void setup()
    mydelay(1000UL);
    // DRA818 Setup
    // must set these, then call WriteFreq
+   //
+   if ( dra.heartbeat() )  {
+#ifdef OPTION_LCD
+       lcd.clear();
+       lcd.print(F("TXCR OK")) ;
+#endif 
+#ifdef MEGA
+   serialdb->println(F("TXCR OK")) ;
+#endif
+   } else {
+#ifdef OPTION_LCD
+       lcd.clear();
+       lcd.print(F("TXCR Fail")) ;
+#endif 
+#ifdef MEGA
+   serialdb->println(F("TXCR Fail:")) ;
+   serialdb->println(dra.response) ;
+#endif
+   } 
+
+   mydelay(3000UL);
    dra.setFreq(FREQ);
    dra.setTXCTCSS(0);
-   dra.setSquelch(5);
+   dra.setSquelch(4);
    dra.setRXCTCSS(0);
    dra.setBW(0); // 0 = 12.5k, 1 = 25k
    dra.writeFreq();
@@ -146,7 +267,7 @@ void setup()
    lcd.clear();
    lcd.print(F("Freq Set"));
 #endif 
-   dra.setVolume(1);
+   dra.setVolume(5);
    mydelay(3000UL);
 #ifdef OPTION_LCD
    lcd.clear();
@@ -186,6 +307,9 @@ void setup()
    lcd.clear();
    lcd.print(F("Setup Complete")) ;
 #endif
+#ifdef MEGA
+   serialdb->println(F("Setup complete")) ;
+#endif
    mydelay(2000UL) ;
 
 }
@@ -194,12 +318,13 @@ char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
 int h = 0 ;
 
+
+
 void loop()
 {
 
-
-   while(Serial.available() > 0 ) {
-       if(gps.encode(Serial.read())) {
+   while(serialgps->available() > 0 ) {
+       if(gps.encode(serialgps->read())) {
            if( gps.location.isValid()) {
               double dmh ; 
                // latitude
@@ -235,22 +360,36 @@ void loop()
 
    if ( millis() - lastupdate > update_beacon ) {
      lastupdate = millis() ;
-     if ( beacon_init_count-- <= -1 ) {
-        update_beacon = UPDATE_BEACON ;
-     }
      // const char * lat =  "3742.44N" ;
      // const char * lon = "12157.54W" ;
      // 
 
      if ( gps.location.isValid() )  {
+
+         if ( beacon_init_count-- <= 0 ) {
+            update_beacon = UPDATE_BEACON ;
+            beacon_init_count = 10000 ;
+         }
 #ifdef OPTION_LCD
          lcd.clear();
          lcd.print(F("sending packet"));
 #endif
-         locationUpdate(lat,lon,h,1,0,0) ;
-         // mydelay(250UL);
-         // dra.setPTT(LOW);
+#ifdef MEGA
+         serialdb->println(F("sending location packet")) ;
+#endif 
+         locationUpdate(lat,lon,0,1,0,0) ;
          sent_count++ ;
+         forcedisplay = true ; 
+      }
+   }
+
+   processPacket() ;
+
+
+   if ( forcedisplay ||  millis() - lastupdatedisplay > UPDATE_DISPLAY ) {
+     lastupdatedisplay = millis() ;
+         forcedisplay = false ;
+
 #ifdef OPTION_LCD
          lcd.clear();
          lcd.print(F("s: ")) ;
@@ -258,14 +397,27 @@ void loop()
          lcd.print(F(" r: ")) ;
          lcd.print(recv_count) ;
          lcd.setCursor(0,1);
-         lcd.print(lat) ;
-#endif
-     } else {
-         lcd.clear();
-         lcd.print(F("gps not ready")) ;
-     } 
-   }
 
-   processPacket() ;
+         if ( gps.location.isValid() )  {
+            lcd.print(lat) ;
+         } else {
+            lcd.print(F("gps not ready")) ;
+         }
+#endif
+#ifdef MEGA
+         serialdb->print(F("sent msg:")) ;
+         serialdb->print(sent_count) ;
+         serialdb->print(F(" msg recv:")) ;
+         serialdb->print(recv_count) ;
+         serialdb->print(F(" ")) ;
+         if ( gps.location.isValid() )  {
+            serialdb->println(lat) ;
+         } else {
+            serialdb->println(F("gps not ready")) ;
+         }
+         APRS_printSettings(serialdb) ;
+#endif 
+
+     } 
 
 }
