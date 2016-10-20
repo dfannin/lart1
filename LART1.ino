@@ -21,7 +21,7 @@
 #include "SoftwareSerial.h"
 #endif
 
-#define VERSION "Beta-0.995m"
+#define VERSION "Beta-0.996m"
 
 #define ADC_REFERENCE REF_5V
 #define OPEN_SQUELCH false
@@ -116,31 +116,34 @@ void processPacket()
           serialdb->print("-") ;
           serialdb->print(gps.date.day()) ;
           serialdb->print(" ") ;
+          if (gps.time.hour() < 10 ) serialdb->print("0") ;
           serialdb->print(gps.time.hour()) ;
           serialdb->print(":") ;
+          if (gps.time.minute() < 10 ) serialdb->print("0") ;
           serialdb->print(gps.time.minute()) ;
           serialdb->print(":") ;
+          if (gps.time.second() < 10 ) serialdb->print("0") ;
           serialdb->print(gps.time.second()) ;
           serialdb->print(" ") ;
       }
 
-      serialdb->print(F("Received Packet s:"));
+      serialdb->print(F(",Rcv Pkt:s:"));
       serialdb->print(incomingPacket.src.call);
       serialdb->print(F("-")) ;
       serialdb->print(incomingPacket.src.ssid);
-      serialdb->print(F(" d:")) ;
+      serialdb->print(F(",d:")) ;
       serialdb->print(incomingPacket.dst.call);
       serialdb->print(F("-")) ;
       serialdb->print(incomingPacket.dst.ssid);
 
       for(int i = 0; i < incomingPacket.rpt_count ; i++) {
-        serialdb->print(F(" r:")) ;
+        serialdb->print(F(",r:")) ;
         serialdb->print(incomingPacket.rpt_list[i].call);
         serialdb->print(F("-")) ;
         serialdb->print(incomingPacket.rpt_list[i].ssid);
       }
 
-      serialdb->print(F(" data:")) ;
+      serialdb->print(F(",data:")) ;
       for(int i = 0; i < incomingPacket.len; i++) {
           serialdb->print( (char) incomingPacket.info[i]) ;
       }
@@ -150,8 +153,8 @@ void processPacket()
       free(packetData) ;
 
 #ifdef MEGA
-      serialdb->print(F("Free Ram:")) ;
-      serialdb->println(freeMemory()) ;
+      // serialdb->print(F("Free Ram:")) ;
+      // serialdb->println(freeMemory()) ;
 #endif
 
    }
@@ -159,16 +162,23 @@ void processPacket()
 
 
 
-void locationUpdate(const char *lat, const char *lon,int height = 0 ,int power=1, int gain=0, int dir=0)
+void locationUpdate(const char *lat, const char *lon,int altitude, int height = 0 ,int power=1, int gain=0, int dir=0)
 {
+    char comment[43] ; // max of 36 chars with PHG data extension, 43 chars  without
    APRS_setLat(lat);
    APRS_setLon(lon);
    APRS_setHeight(height);
    APRS_setPower(power);
    APRS_setGain(gain);
    APRS_setDirectivity(dir);
+   sprintf(comment,"/A=%06dLART-1 Tracker beta",altitude) ;
+   // sprintf(comment,"LART-1 Tracker") ;
+   // strcpy(comment,"LART-1 Tracker") ;
+   // char * comment = "LART-1 Tracker" ;
 
-   char *comment = "LART-1 Tracker" ;
+   serialdb->print(F("comment added: ")) ;
+   serialdb->println(comment) ; 
+
    APRS_sendLoc(comment, strlen(comment));
 }
 
@@ -195,7 +205,6 @@ double  ddtodmh(float dd) {
 void setup()
 {
 
-   mydelay(1000UL) ;
 #ifdef OPTION_LCD
    lcd.begin(16,2);
    lcd.clear();
@@ -225,7 +234,7 @@ void setup()
    serialdb->println(VERSION);
 #endif 
 
-   mydelay(2000UL) ;
+   mydelay(1000UL) ;
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Version:"));
@@ -255,30 +264,30 @@ void setup()
 #endif
    } 
 
-   mydelay(3000UL);
+   mydelay(1000UL);
    dra.setFreq(FREQ);
    dra.setTXCTCSS(0);
    dra.setSquelch(4);
    dra.setRXCTCSS(0);
    dra.setBW(0); // 0 = 12.5k, 1 = 25k
    dra.writeFreq();
-   mydelay(3000UL);
+   mydelay(1000UL);
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Freq Set"));
 #endif 
    dra.setVolume(5);
-   mydelay(3000UL);
+   mydelay(1000UL);
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Vol Set"));
 #endif
    dra.setFilters(false, true, true);
-   mydelay(3000UL);
+   mydelay(1000UL);
    lcd.clear();
    lcd.print(F("Filter Set"));
    dra.setPTT(LOW);
-   mydelay(3000UL);
+   mydelay(1000UL);
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("F:")) ;
@@ -289,7 +298,7 @@ void setup()
    lcd.print(F(" RC: ")) ;
    lcd.print(0) ;
 #endif
-   mydelay(2000UL) ;
+   mydelay(1000UL) ;
 
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
@@ -303,20 +312,19 @@ void setup()
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("APRS setup")) ;
-   mydelay(2000UL) ;
+   mydelay(1000UL) ;
    lcd.clear();
    lcd.print(F("Setup Complete")) ;
 #endif
 #ifdef MEGA
    serialdb->println(F("Setup complete")) ;
 #endif
-   mydelay(2000UL) ;
 
 }
 
 char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
-int h = 0 ;
+int alt = 0 ;
 
 
 
@@ -352,7 +360,7 @@ void loop()
 
            // altitude 
            if ( gps.altitude.isValid() ) {
-               h = (int) gps.altitude.meters() ;
+               alt = (int) gps.altitude.feet() ;
            }
 
        }
@@ -375,9 +383,9 @@ void loop()
          lcd.print(F("sending packet"));
 #endif
 #ifdef MEGA
-         serialdb->println(F("sending location packet")) ;
+         serialdb->println(F("Sending location packet:")) ;
 #endif 
-         locationUpdate(lat,lon,0,1,0,0) ;
+         locationUpdate(lat,lon,alt,0,1,0,0) ;
          sent_count++ ;
          forcedisplay = true ; 
       }
@@ -399,21 +407,21 @@ void loop()
          lcd.setCursor(0,1);
 
          if ( gps.location.isValid() )  {
-            lcd.print(lat) ;
+            lcd.print(F("gps fix")) ;
          } else {
-            lcd.print(F("gps not ready")) ;
+            lcd.print(F("gps no fix")) ;
          }
 #endif
 #ifdef MEGA
-         serialdb->print(F("sent msg:")) ;
+         serialdb->print(F("Stats:sent:")) ;
          serialdb->print(sent_count) ;
-         serialdb->print(F(" msg recv:")) ;
+         serialdb->print(F(",recv:")) ;
          serialdb->print(recv_count) ;
-         serialdb->print(F(" ")) ;
+         serialdb->print(F(",")) ;
          if ( gps.location.isValid() )  {
-            serialdb->println(lat) ;
+            serialdb->println(F("gps fix")) ;
          } else {
-            serialdb->println(F("gps not ready")) ;
+            serialdb->println(F("gps no fix")) ;
          }
          APRS_printSettings(serialdb) ;
 #endif 

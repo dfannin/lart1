@@ -176,28 +176,28 @@ void APRS_setDirectivity(int s) {
 }
 
 void APRS_printSettings(Stream * db) {
-    db->println(F("LibAPRS Settings:"));
-    db->print(F("Callsign:     ")); db->print(CALL); db->print(F("-")); db->println(CALL_SSID);
-    db->print(F("Destination:  ")); db->print(DST); db->print(F("-")); db->println(DST_SSID);
-    db->print(F("Path1:        ")); db->print(PATH1); db->print(F("-")); db->println(PATH1_SSID);
-    db->print(F("Path2:        ")); db->print(PATH2); db->print(F("-")); db->println(PATH2_SSID);
-    db->print(F("Message dst:  ")); if (message_recip[0] == 0) { 
-                                           db->println(F("N/A")); 
+    db->print(F("Settings:"));
+    db->print(F("CS:")); db->print(CALL); db->print(F("-")); db->print(CALL_SSID);
+    db->print(F(",Dst:")); db->print(DST); db->print(F("-")); db->print(DST_SSID);
+    db->print(F(",P1:")); db->print(PATH1); db->print(F("-")); db->print(PATH1_SSID);
+    db->print(F(",P2:")); db->print(PATH2); db->print(F("-")); db->print(PATH2_SSID);
+    db->print(F(",Mdst:")); if (message_recip[0] == 0) { 
+                                           db->print(F("N/A")); 
                                      } else { db->print(message_recip); 
                                             db->print(F("-")); 
-                                            db->println(message_recip_ssid);
+                                            db->print(message_recip_ssid);
                                      }
-    db->print(F("TX Preamble:  ")); db->println(custom_preamble);
-    db->print(F("TX Tail:      ")); db->println(custom_tail);
-    db->print(F("Symbol table: ")); if (symbolTable = '/') { db->println(F("Normal")); } else { db->println(F("Alternate")); }
-    db->print(F("Symbol:       ")); db->println(symbol);
-    db->print(F("Power:        ")); if (power < 10) { db->println(power); } else { db->println(F("N/A")); }
-    db->print(F("Height:       ")); if (height < 10) { db->println(height); } else { db->println(F("N/A")); }
-    db->print(F("Gain:         ")); if (gain < 10) { db->println(gain); } else { db->println(F("N/A")); }
-    db->print(F("Directivity:  ")); if (directivity < 10) { db->println(directivity); } else { db->println(F("N/ A")); }
-    db->print(F("Latitude:     ")); if (latitude[0] != 0) { db->println(latitude); } else { db->println(F("N/    A")); }
-    db->print(F("Longtitude:   ")); if (longtitude[0] != 0) { db->println(longtitude); } else { db->println(F("N/A")); }
-    db->println(F("End Settings."));
+    db->print(F(",Pre:")); db->print(custom_preamble);
+    db->print(F(",Tail:")); db->print(custom_tail);
+    db->print(F(",Symtab:")); if (symbolTable = '/') { db->print(F("Norm")); } else { db->print(F("Alt")); }
+    db->print(F(",Sym:")); db->print(symbol);
+    db->print(F(",P:")); if (power < 10) { db->print(power); } else { db->print(F("N/A")); }
+    db->print(F(",H:")); if (height < 10) { db->print(height); } else { db->print(F("N/A")); }
+    db->print(F(",G:")); if (gain < 10) { db->print(gain); } else { db->print(F("N/A")); }
+    db->print(F(",D:")); if (directivity < 10) { db->print(directivity); } else { db->print(F("N/A")); }
+    db->print(F(",Lat:")); if (latitude[0] != 0) { db->print(latitude); } else { db->print(F("N/A")); }
+    db->print(F(",Lon:")); if (longtitude[0] != 0) { db->print(longtitude); } else { db->print(F("N/A")); }
+    db->println(F(""));
 }
 
 void APRS_sendPkt(void *_buffer, size_t length) {
