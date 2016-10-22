@@ -135,24 +135,36 @@ void DRA818::setPTT(bool ptt) {
     }
 }
 
-void DRA818::readResponse(void) {
+void DRA818::readResponse() {
+
     this->response[0] = '\0' ;
     int i = 0 ;
-    while  (this->serial->available()  > 0 && i < (DRA818_BUFSIZE - 2)) {
-        char c = this->serial->read() ;
-        this->response[i++]=c ;
-        this->response[i]='\0';
+    unsigned long  rtimeout =  millis()  ;
+  
+   // delay loop waiting for chars
+    while ( ( millis() - rtimeout ) < 500) {
+        if ( this-serial->available() > 0 )  break ;
+    } 
+
+    rtimeout = millis() ;
+
+    while ( (millis() - rtimeout) < 100 )  {
+         while  (   this->serial->available()  > 0  && i < (DRA818_BUFSIZE - 2)) {
+            char c = this->serial->read() ;
+            this->response[i++]=c ;
+            this->response[i]='\0';
+            rtimeout = millis() ;
+         }
     }
 }
 
-bool DRA818::heartbeat(void) {
+bool DRA818::heartbeat() {
     digitalWrite(this->PTT_PIN, LOW); 
     delay(250); 
 
     this->serial->write("AT+DMOCONNECT\r\n") ;
     this->serial->flush() ;
     this->readResponse() ;
-
     if ( strncmp(this->response,"+DMOCONNECT:0\r\n",13) == 0 ) {
         return true ;
     } else {

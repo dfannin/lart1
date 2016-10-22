@@ -43,8 +43,8 @@ class DRA818 {
         void writeFreq(void);
         void setBW(uint8_t bw);
         void setPTT(bool ptt);
-        void readResponse(void) ;
-        bool heartbeat(void);
+        void readResponse() ;
+        bool heartbeat();
 
         uint8_t PTT_PIN;
         uint8_t tx_ctcss;

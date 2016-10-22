@@ -21,7 +21,7 @@
 #include "SoftwareSerial.h"
 #endif
 
-#define VERSION "Beta-0.996m"
+#define VERSION "Beta-0.997m"
 
 #define ADC_REFERENCE REF_5V
 #define OPEN_SQUELCH false
@@ -251,7 +251,7 @@ void setup()
        lcd.print(F("TXCR OK")) ;
 #endif 
 #ifdef MEGA
-   serialdb->println(F("TXCR OK")) ;
+   serialdb->println(F("Transceiver Check OK")) ;
 #endif
    } else {
 #ifdef OPTION_LCD
@@ -259,7 +259,7 @@ void setup()
        lcd.print(F("TXCR Fail")) ;
 #endif 
 #ifdef MEGA
-   serialdb->println(F("TXCR Fail:")) ;
+   serialdb->println(F("Transceiver Check Fail:")) ;
    serialdb->println(dra.response) ;
 #endif
    } 
