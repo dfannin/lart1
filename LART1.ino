@@ -1,62 +1,57 @@
-
-#if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__) 
-#define TARGET_CPU m328p
-#endif
+/*
+ * Livermore Amateur Radio Klub (LART) APRS Tracker (LART/1)
+ *
+ * Provides (Automatic Position Reporting System) APRS tracker features that can be used 
+ * as an GPS location transmitter "beacon" , and can also function as an  APRS packet receiver.     
+ * The design is designed to integrate  the DRA818v/SA818v 2 meter 1 watt transceiver module, and
+ * a NMEA compatible GPS module.  
+ *
+ * The following libraries are required (modified libraries are provided in the repository):
+ * LibAPRS - provides the software TNC featuree
+ * DRA818 - controls the  2 meter transceiver
+ * TinyGPSplus - parses the GPS messages
+ * LiquidCrystal_I2C (optional) - provides LCD display
+ *
+ * The hardware specifications and schematic are provided in the repository. It is designed to
+ * run on a Arduino Mega2560 compatible board.
+ * 
+ * Author: David Fannin, KK6DF
+ * Created: October 2016 
+ * License: MIT License
+ * Licenses and Copyright Notices for Modified Libraries are retained by the original authors. 
+ *
+ */
 
 #if defined(__AVR_ATmega2560__) 
 #define TARGET_CPU mega2560
 #endif
 
 #include "Arduino.h" 
+#include "LART1_Settings.h"
 #include "LiquidCrystal_I2C.h"
 #include "LibAPRS.h"
 #include "TinyGPSplus.h"
 #include "DRA818.h"
 
-#if TARGET_CPU == mega2560
-#define MEGA 1
-#endif
-
-#ifndef MEGA 
-#include "SoftwareSerial.h"
-#endif
-
-#define VERSION "Beta-0.997m"
-
+#define VERSION "Beta-0.998m"
 #define ADC_REFERENCE REF_5V
-#define OPEN_SQUELCH false
 
-#define OPTION_LCD  true
-#define CALLSIGN "KK6DF"
-#define SSID 2
-
-#ifdef MEGA
+// sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
 #define PTT 25
-#else
-#define PTT 3 
-#endif
 
-#define FREQ 144.39
-#define UPDATE_BEACON 300000L
-#define UPDATE_BEACON_INIT  60000L
-
-#define NOP __asm__ __volatile__("nop\n\t")
-
-#ifdef MEGA
-HardwareSerial  * serialgps  = &Serial1 ;
+// usb serial port
 HardwareSerial  * serialdb   = &Serial ;
-#else
-HardwareSerial *serialgps = &Serial; 
-#endif
+// gps port
+HardwareSerial  * serialgps  = &Serial1 ;
+// DRA818 port
+HardwareSerial * dra_serial = &Serial2 ;
 
 
-int beacon_init_count = 1 ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
 unsigned long lastupdate = 0 ;
 
-#define UPDATE_DISPLAY 60000L 
 unsigned long lastupdatedisplay = 0 ;
 bool forcedisplay = false ;
 
@@ -70,15 +65,6 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE);
 
 TinyGPSPlus gps ;
 
-// DRA818 setup
-#ifdef MEGA 
-HardwareSerial * dra_serial = &Serial2 ;
-#else
-#define DRA_RXD A1
-#define DRA_TXD A2
-SoftwareSerial dra818_serial(DRA_RXD,DRA_TXD);
-SoftwareSerial * dra_serial  = &dra818_serial;
-#endif
 
 DRA818 dra(dra_serial, PTT);
 
@@ -108,7 +94,6 @@ void processPacket()
    if(gotPacket) {
       gotPacket = false ;
       recv_count++ ;
-#ifdef MEGA
       if( gps.date.isValid() ) {
           serialdb->print(gps.date.year()) ;
           serialdb->print("-") ;
@@ -148,14 +133,11 @@ void processPacket()
           serialdb->print( (char) incomingPacket.info[i]) ;
       }
       serialdb->println("") ;
-#endif
 
       free(packetData) ;
 
-#ifdef MEGA
       // serialdb->print(F("Free Ram:")) ;
       // serialdb->println(freeMemory()) ;
-#endif
 
    }
 }
@@ -164,32 +146,17 @@ void processPacket()
 
 void locationUpdate(const char *lat, const char *lon,int altitude, int height = 0 ,int power=1, int gain=0, int dir=0)
 {
-    char comment[43] ; // max of 36 chars with PHG data extension, 43 chars  without
+   char comment[43] ; // max of 36 chars with PHG data extension, 43 chars  without
    APRS_setLat(lat);
    APRS_setLon(lon);
-   APRS_setHeight(height);
-   APRS_setPower(power);
-   APRS_setGain(gain);
-   APRS_setDirectivity(dir);
+   // APRS_setHeight(height);
+   // APRS_setPower(power);
+   // APRS_setGain(gain);
+   // APRS_setDirectivity(dir);
    sprintf(comment,"/A=%06dLART-1 Tracker beta",altitude) ;
-   // sprintf(comment,"LART-1 Tracker") ;
-   // strcpy(comment,"LART-1 Tracker") ;
-   // char * comment = "LART-1 Tracker" ;
-
-   serialdb->print(F("comment added: ")) ;
-   serialdb->println(comment) ; 
-
-   APRS_sendLoc(comment, strlen(comment));
+   APRS_sendLoc(comment, strlen(comment),serialdb);
 }
 
-
-void mydelay(unsigned long msec) {
-    unsigned long future = millis() + msec ;
-    while ( (future - millis()) > 0 ) {
-        NOP ;
-    } ;
-    return ;  
-}
 
 double  ddtodmh(float dd) {
 
@@ -216,109 +183,121 @@ void setup()
    lcd.print(SSID) ;
 #endif
 
-#ifdef MEGA
    dra_serial->begin(9600) ;
    serialgps->begin(4800) ;
    serialdb->begin(9600) ;
-#else
-   dra_serial->begin(9600);
-   serialgps->begin(4800) ;
-#endif
 
-#ifdef MEGA
    serialdb->println(F("LART/1 APRS Beacon")) ;
    serialdb->print(CALLSIGN) ;
    serialdb->print("-") ;
    serialdb->println(SSID) ;
    serialdb->print(F("Version:"));
    serialdb->println(VERSION);
-#endif 
 
-   mydelay(1000UL) ;
+   delay(1000UL) ;
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Version:"));
    lcd.setCursor(0,1);
    lcd.print(VERSION);
 #endif
-   mydelay(1000UL);
+   delay(1000UL);
    // DRA818 Setup
    // must set these, then call WriteFreq
    //
    if ( dra.heartbeat() )  {
 #ifdef OPTION_LCD
        lcd.clear();
-       lcd.print(F("TXCR OK")) ;
+       lcd.print(F("Txcr OK")) ;
 #endif 
-#ifdef MEGA
-   serialdb->println(F("Transceiver Check OK")) ;
-#endif
+      serialdb->println(F("Transceiver Check OK")) ;
    } else {
 #ifdef OPTION_LCD
        lcd.clear();
-       lcd.print(F("TXCR Fail")) ;
+       lcd.print(F("Txcr Fail")) ;
 #endif 
-#ifdef MEGA
    serialdb->println(F("Transceiver Check Fail:")) ;
    serialdb->println(dra.response) ;
-#endif
    } 
 
-   mydelay(1000UL);
-   dra.setFreq(FREQ);
-   dra.setTXCTCSS(0);
-   dra.setSquelch(4);
-   dra.setRXCTCSS(0);
-   dra.setBW(0); // 0 = 12.5k, 1 = 25k
+   delay(500UL);
+   dra.setFreq(TXFREQ,RXFREQ);
+   dra.setTXCTCSS(TXCTCSS);
+   dra.setSquelch(SQUELCH);
+   dra.setRXCTCSS(RXCTCSS);
+   dra.setBW(BW); // 0 = 12.5k, 1 = 25k
    dra.writeFreq();
-   mydelay(1000UL);
+   delay(1000UL);
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Freq Set"));
 #endif 
-   dra.setVolume(5);
-   mydelay(1000UL);
+   serialdb->println(F("Txcr Freq and Tones Set")) ;
+
+   dra.setVolume(VOL);
+   delay(500UL);
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Vol Set"));
 #endif
-   dra.setFilters(false, true, true);
-   mydelay(1000UL);
-   lcd.clear();
-   lcd.print(F("Filter Set"));
-   dra.setPTT(LOW);
-   mydelay(1000UL);
+   serialdb->println(F("Txcr Vol Set")) ;
+   dra.setVolume(VOL);
+
+   dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS);
+   delay(500UL);
+
 #ifdef OPTION_LCD
    lcd.clear();
-   lcd.print(F("F:")) ;
-   lcd.print(FREQ) ;
+   lcd.print(F("Filter Set"));
+#endif 
+
+   serialdb->println(F("Txcr Filters Set")) ;
+   dra.setPTT(LOW);
+   delay(500UL);
+
+#ifdef OPTION_LCD
+   lcd.clear();
+   lcd.print(TXFREQ) ;
+   lcd.print(F("/")) ;
+   lcd.print(RXFREQ) ;
    lcd.setCursor(0,1) ;
    lcd.print(F(" TC: ")) ;
    lcd.print(0) ;
    lcd.print(F(" RC: ")) ;
    lcd.print(0) ;
 #endif
-   mydelay(1000UL) ;
+
+   serialdb->print(F("Txcr TX/RX Freqs: ")) ;
+   serialdb->print(TXFREQ) ;
+   serialdb->print(F("/")) ;
+   serialdb->print(RXFREQ) ;
+   serialdb->print(F(" Tones: ")) ;
+   serialdb->print(TXCTCSS) ;
+   serialdb->print(F("/")) ;
+   serialdb->println(RXCTCSS) ;
+
+   delay(500UL) ;
 
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
-   APRS_setDestination("APZMDM",0);
-   APRS_setPath1("WIDE1",1);
-   APRS_setPath2("WIDE2",1);
-   APRS_setPreamble(350L);
-   APRS_setTail(50L);
-   APRS_setSymbol('n');
+   APRS_setDestination(APRS_DEST,0);
+   APRS_setPath1(PATH1,PATH1_SSID);
+   APRS_setPath2(PATH2,PATH2_SSID);
+   APRS_setPreamble(PREAMBLE);
+   APRS_setTail(TAIL);
+   APRS_setSymbol(SYMBOL);
 
 #ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("APRS setup")) ;
-   mydelay(1000UL) ;
+#endif 
+   serialdb->println(F("APRS TNC complete")) ;
+   delay(500UL) ;
+#ifdef OPTION_LCD
    lcd.clear();
    lcd.print(F("Setup Complete")) ;
 #endif
-#ifdef MEGA
    serialdb->println(F("Setup complete")) ;
-#endif
 
 }
 
@@ -374,7 +353,7 @@ void loop()
 
      if ( gps.location.isValid() )  {
 
-         if ( beacon_init_count-- <= 0 ) {
+         if ( --beacon_init_count <= 0 ) {
             update_beacon = UPDATE_BEACON ;
             beacon_init_count = 10000 ;
          }
@@ -382,9 +361,6 @@ void loop()
          lcd.clear();
          lcd.print(F("sending packet"));
 #endif
-#ifdef MEGA
-         serialdb->println(F("Sending location packet:")) ;
-#endif 
          locationUpdate(lat,lon,alt,0,1,0,0) ;
          sent_count++ ;
          forcedisplay = true ; 
@@ -412,7 +388,6 @@ void loop()
             lcd.print(F("gps no fix")) ;
          }
 #endif
-#ifdef MEGA
          serialdb->print(F("Stats:sent:")) ;
          serialdb->print(sent_count) ;
          serialdb->print(F(",recv:")) ;
@@ -424,7 +399,6 @@ void loop()
             serialdb->println(F("gps no fix")) ;
          }
          APRS_printSettings(serialdb) ;
-#endif 
 
      } 
 

@@ -225,7 +225,7 @@ void APRS_sendPkt(void *_buffer, size_t length) {
 }
 
 // Dynamic RAM usage of this function is 30 bytes
-void APRS_sendLoc(void *_buffer, size_t length) {
+void APRS_sendLoc(void *_buffer, size_t length, Stream *db) {
     size_t payloadLength = 20+length;
     bool usePHG = false;
     if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
@@ -257,12 +257,24 @@ void APRS_sendLoc(void *_buffer, size_t length) {
         memcpy(ptr, buffer, length);
     }
 
+    if ( db != NULL ) { 
+        db->print("Loc Pkt Sent:") ; 
+        char pbuf[60] ; 
+        int i ; 
+        for (i = 0 ; i < payloadLength ; i++ ) {
+            pbuf[i]  = (char *) packet[i] ; 
+        }
+        pbuf[i] = '\0' ; 
+
+        db->println(pbuf) ;
+    }
+
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }
 
 // Dynamic RAM usage of this function is 18 bytes
-void APRS_sendMsg(void *_buffer, size_t length) {
+void APRS_sendMsg(void *_buffer, size_t length, Stream *db) {
     if (length > 67) length = 67;
     size_t payloadLength = 11+length+4;
 
@@ -309,6 +321,18 @@ void APRS_sendMsg(void *_buffer, size_t length) {
     packet[12+length] = h+48;
     packet[13+length] = d+48;
     packet[14+length] = n+48;
+
+    if ( db != NULL ) { 
+        db->print("Msg Pkt Sent:") ; 
+        char pbuf[60] ; 
+        int i ; 
+        for (i = 0 ; i < payloadLength ; i++ ) {
+            pbuf[i]  = (char *) packet[i] ; 
+        }
+        pbuf[i] = '\0' ; 
+
+        db->println(pbuf) ;
+    }
     
     APRS_sendPkt(packet, payloadLength);
     free(packet);
@@ -316,7 +340,7 @@ void APRS_sendMsg(void *_buffer, size_t length) {
 
 void APRS_msgRetry() {
     message_seq--;
-    APRS_sendMsg(lastMessage, lastMessageLen);
+    APRS_sendMsg(lastMessage, lastMessageLen,NULL);
 }
 
 // For getting free memory, from:
