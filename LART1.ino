@@ -34,7 +34,7 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999f"
+#define VERSION "Beta-0.999g"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -200,6 +200,8 @@ void setup()
        mylog.send(F("Txcr OK Chk")) ;
    } else {
        mylog.send(F("Txcr Fail Chk")) ;
+       delay(1000) ;
+       exit(0) ;
    } 
    delay(500UL);
 
@@ -220,6 +222,8 @@ void setup()
        mylog.send(buf);
     } else {
         mylog.send(F("Freq Fail"));
+       delay(1000) ;
+       exit(0) ;
     }
    delay(1000UL);
 
@@ -228,7 +232,8 @@ void setup()
        mylog.send(buf);
     } else {
         mylog.send(F("Vol Fail"));
-
+       delay(1000) ;
+       exit(0) ;
     } 
 
    delay(500UL);
@@ -238,6 +243,8 @@ void setup()
       mylog.send(buf);
    } else { 
       mylog.send( F("Filter Fail") );
+       delay(1000) ;
+       exit(0) ;
    }
 
    delay(500UL);
