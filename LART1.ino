@@ -34,7 +34,7 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999c"
+#define VERSION "Beta-0.999d"
 #define ADC_REFERENCE REF_5V
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
@@ -58,9 +58,10 @@ bool forcedisplay = false ;
 
 int sent_count=0 ;
 
-#ifdef OPTION_LCD
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
-#endif 
+
+unsigned long bklighttimer = 30000UL ;
+
 
 // GPS 
 
@@ -252,6 +253,8 @@ void setup()
 char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
 int alt = 0 ;
+char  prevlat[] =  "0000.00N" ;
+char  prevlon[] = "00000.00W" ;
 
 
 
@@ -293,6 +296,9 @@ void loop()
        }
    }
 
+
+
+
    if ( millis() - lastupdate > update_beacon ) {
      lastupdate = millis() ;
      // const char * lat =  "3742.44N" ;
@@ -314,6 +320,10 @@ void loop()
 
    processPacket() ;
 
+   // need the extra logic check, to avoid negative result errors with unsigned longs
+   if ( ( bklighttimer < millis() ) &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
+       lcd.setBacklight(LOW) ; 
+   }
 
    if ( forcedisplay ||  millis() - lastupdatedisplay > UPDATE_DISPLAY ) {
      lastupdatedisplay = millis() ;

@@ -71,6 +71,8 @@
 //
 // has an LCD
 #define OPTION_LCD  true
+// backlight interval in seconds
+#define BKLIGHT_INTERVAL 20000L
 
 // beaconing timing 
 // update beacon every xx ms after the inital period
