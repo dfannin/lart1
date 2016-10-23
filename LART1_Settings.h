@@ -87,4 +87,13 @@ int beacon_init_count = 1 ;
 // output statistics every xx ms
 #define UPDATE_DISPLAY 60000L 
 
+// gps port speed
+#define GPS_PORT_BAUD  9600
+
+// usb port speed
+#define USB_PORT_BAUD  9600
+
+// DRA818 port speed
+#define DRA818_PORT_BAUD  9600
+
 #endif

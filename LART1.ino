@@ -34,7 +34,7 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999d"
+#define VERSION "Beta-0.999e"
 #define ADC_REFERENCE REF_5V
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
@@ -171,9 +171,9 @@ double  ddtodmh(float dd) {
 void setup()
 {
 
-   dra_serial->begin(9600) ;
-   serialgps->begin(4800) ;
-   serialdb->begin(9600) ;
+   dra_serial->begin(DRA818_PORT_BAUD) ;
+   serialgps->begin(GPS_PORT_BAUD) ;
+   serialdb->begin(USB_PORT_BAUD) ;
 
    lcd.begin(16,2);
 
