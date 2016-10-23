@@ -34,8 +34,9 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999e"
+#define VERSION "Beta-0.999f"
 #define ADC_REFERENCE REF_5V
+#define DEBUG_APRS_SETTINGS false
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
 #define PTT 25
@@ -51,8 +52,10 @@ HardwareSerial * dra_serial = &Serial2 ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
+// set the outer beacon check loop to 30 seconds (do not change).
+unsigned long update_check = 30000L ;
+unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
-
 unsigned long lastupdatedisplay = 0 ;
 bool forcedisplay = false ;
 
@@ -64,14 +67,12 @@ unsigned long bklighttimer = 30000UL ;
 
 
 // GPS 
-
 TinyGPSPlus gps ;
 
-// DRA818
+// DRA818 Transceiver Module
 DRA818 dra(dra_serial, PTT);
 
 // Log
-//
 Log mylog;
 
 char buf[100] ;
@@ -104,33 +105,36 @@ void processPacket()
       gotPacket = false ;
       recv_count++ ;
 
-      if( gps.date.isValid() ) {
-          sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d", 
-                  gps.date.year(), gps.date.month(), gps.date.day(),
-                  gps.time.hour(), gps.time.minute(), gps.time.second()
-                 ) ;
-      } 
+      if ( APRS_RECV ) {
 
-      mylog.send(tmpbuf) ;
+          if( gps.date.isValid() ) {
+              sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d", 
+                      gps.date.year(), gps.date.month(), gps.date.day(),
+                      gps.time.hour(), gps.time.minute(), gps.time.second()
+                     ) ;
+          } 
 
-      sprintf(tmpbuf,"%s-%d %s-%d",
-              incomingPacket.src.call, incomingPacket.src.ssid, 
-              incomingPacket.dst.call, incomingPacket.dst.ssid );
+          mylog.send(tmpbuf) ;
 
-      mylog.send(tmpbuf) ;
+          sprintf(tmpbuf,"%s-%d %s-%d",
+                  incomingPacket.src.call, incomingPacket.src.ssid, 
+                  incomingPacket.dst.call, incomingPacket.dst.ssid );
 
-      int i = 0 ; 
-      for(i = 0; i < incomingPacket.rpt_count ; i++) {
-        sprintf(tmpbuf," %s-%d",incomingPacket.rpt_list[i].call, incomingPacket.rpt_list[i].ssid);
-        mylog.send(tmpbuf) ;
+          mylog.send(tmpbuf) ;
+
+          int i = 0 ; 
+          for(i = 0; i < incomingPacket.rpt_count ; i++) {
+            sprintf(tmpbuf," %s-%d",incomingPacket.rpt_list[i].call, incomingPacket.rpt_list[i].ssid);
+            mylog.send(tmpbuf) ;
+          }
+
+          for(i = 0; i < incomingPacket.len; i++) {
+               tmpbuf[i]  = (char) incomingPacket.info[i] ;
+          }
+
+          tmpbuf[i] = '\0' ;
+          mylog.send(tmpbuf) ;
       }
-
-      for(i = 0; i < incomingPacket.len; i++) {
-           tmpbuf[i]  = (char) incomingPacket.info[i] ;
-      }
-
-      tmpbuf[i] = '\0' ;
-      mylog.send(tmpbuf) ;
 
 
       free(packetData) ;
@@ -179,7 +183,7 @@ void setup()
 
    mylog.Log_Init(serialdb, &lcd) ;
 
-   mylog.send(F("LART/1 APRS BEACON")) ;
+   mylog.send(F("LART/1 APRS TRAK")) ;
 
    sprintf(buf,"CS:%s-%d",CALLSIGN,SSID);  
    mylog.send(buf) ;
@@ -205,25 +209,33 @@ void setup()
    dra.setSquelch(SQUELCH);
    dra.setRXCTCSS(RXCTCSS);
    dra.setBW(BW); // 0 = 12.5k, 1 = 25k
+
+   char fbuf[12] ;
    if ( dra.writeFreq() ) {
-        mylog.send(F("Freq Set"));
+       dtostrf(TXFREQ, 8, 4, fbuf) ;
+       sprintf(buf,"Freq TX:%s",fbuf) ;
+       mylog.send(buf);
+       dtostrf(RXFREQ, 8, 4, fbuf) ;
+       sprintf(buf,"Freq RX:%s",fbuf) ;
+       mylog.send(buf);
     } else {
         mylog.send(F("Freq Fail"));
     }
    delay(1000UL);
 
    if ( dra.setVolume(VOL) ) {
-        mylog.send(F("Vol Set"));
+       sprintf(buf,"Vol: %d", VOL) ;
+       mylog.send(buf);
     } else {
         mylog.send(F("Vol Fail"));
 
     } 
 
-
    delay(500UL);
 
    if ( dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS) ) {
-      mylog.send( F("Filter Set") );
+      sprintf(buf,"Filter: %d %d %d",FILTER_PREMPHASIS,FILTER_HIGHPASS,FILTER_LOWPASS) ;
+      mylog.send(buf);
    } else { 
       mylog.send( F("Filter Fail") );
    }
@@ -242,6 +254,17 @@ void setup()
    APRS_setPreamble(PREAMBLE);
    APRS_setTail(TAIL);
    APRS_setSymbol(SYMBOL);
+   if (APRS_BEACON) APRS_printSettings(serialdb) ;
+   delay(500UL) ;
+
+   sprintf(buf,"Receive Mode %d",APRS_RECV) ;
+   mylog.send(buf) ;
+   delay(500UL) ;
+
+   sprintf(buf,"Beacon Mode %d",APRS_BEACON) ;
+   mylog.send(buf) ;
+   sprintf(buf,"Smart Mode %d",SMART_BEACON) ;
+   mylog.send(buf) ;
    delay(500UL) ;
 
    mylog.send(F("Setup Complete")) ;
@@ -253,6 +276,7 @@ void setup()
 char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
 int alt = 0 ;
+bool position_changed = true ;
 char  prevlat[] =  "0000.00N" ;
 char  prevlon[] = "00000.00W" ;
 
@@ -285,6 +309,21 @@ void loop()
                    dtostrf(dmh,8,2,lon) ;
                    lon[8] = 'E';
                }
+               
+
+               // position change
+               //  1 100th-second = 60 feet @ 38 lat
+               //  1 100th-second = 48 feet @  lon (fairly constant) 
+               // set a precision value to compare 
+               if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
+                   strcpy(prevlat,lat) ;
+                   position_changed = true ; 
+               }
+               if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
+                   strcpy(prevlon,lon) ;
+                   position_changed = true ; 
+               }
+
 
            }
 
@@ -297,46 +336,66 @@ void loop()
    }
 
 
+   // outer update check loop 
+   if (APRS_BEACON && ( millis() - lastcheck) > update_check ) {
+       lastcheck = millis () ;
+
+       // don't do anything unless gps is valid
+       if ( gps.location.isValid() )  {
+
+           // set the update_beacon interval
+           // for smart beacon mode , set it based on position changes
+           // for dumb beacon mode, uses UPDATE_BEACON_INIT first time through, then UPDATE_BEACON
+           if ( SMART_BEACON ) {
+              if ( position_changed ) {
+                 update_beacon = UPDATE_BEACON_MOVING ; 
+                 // add this to make sure the location is sent first time thru the loop
+                 if (millis() > UPDATE_BEACON_MOVING * 2) {
+                    position_changed = false ;
+                 } 
+              } else {
+                 update_beacon = UPDATE_BEACON ;
+              } 
+           } else { 
+              // add this to make sure location is sent first time thru the loop
+              if ( millis() > UPDATE_BEACON_INIT * 2 ) {
+                 update_beacon = UPDATE_BEACON ;
+              }
+           } 
+
+           // sprintf(buf,"up beacon %lu",update_beacon) ;
+           // mylog.send(buf) ;
 
 
-   if ( millis() - lastupdate > update_beacon ) {
-     lastupdate = millis() ;
-     // const char * lat =  "3742.44N" ;
-     // const char * lon = "12157.54W" ;
-     // 
+           // if its time, send out the location
+           if ( (millis() - lastupdate) > update_beacon ) {
+              lastupdate = millis() ;
+              mylog.send(F("sending loc"));
+              locationUpdate(lat,lon,alt,0,1,0,0) ;
+              sent_count++ ;
+              forcedisplay = true ; 
 
-     if ( gps.location.isValid() )  {
-
-         if ( --beacon_init_count <= 0 ) {
-            update_beacon = UPDATE_BEACON ;
-            beacon_init_count = 10000 ;
-         }
-         mylog.send(F("sending packet"));
-         locationUpdate(lat,lon,alt,0,1,0,0) ;
-         sent_count++ ;
-         forcedisplay = true ; 
-      }
+          }
+       }
    }
 
    processPacket() ;
 
    // need the extra logic check, to avoid negative result errors with unsigned longs
-   if ( ( bklighttimer < millis() ) &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
+   if ( ( bklighttimer < millis() ) 
+           &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
        lcd.setBacklight(LOW) ; 
    }
 
-   if ( forcedisplay ||  millis() - lastupdatedisplay > UPDATE_DISPLAY ) {
+   if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
      lastupdatedisplay = millis() ;
          forcedisplay = false ;
-
 
          sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
          mylog.send(buf) ;
 
          if ( gps.location.isValid() )  {
-
              char datebuf[20] ; 
-
              sprintf(datebuf,"%4d-%02d-%02d %02d:%02d:%02d", 
                   gps.date.year(), gps.date.month(), gps.date.day(),
                   gps.time.hour(), gps.time.minute(), gps.time.second()
@@ -346,7 +405,7 @@ void loop()
             mylog.send(F("gps no fix")) ;
          }
 
-         APRS_printSettings(serialdb) ;
+         if ( DEBUG_APRS_SETTINGS) APRS_printSettings(serialdb) ;
 
      } 
 

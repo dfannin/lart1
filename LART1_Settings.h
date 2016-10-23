@@ -4,11 +4,11 @@
 //----------- user settable values  --------------------// 
 //
 // turn on beacon transmitter 
-#define APRS_BEACON  true 
-// turn on aprs packet receiver output
+#define APRS_BEACON true
+// turn on aprs packet receiver serial output
 #define APRS_RECV    true
 // adapts beacon update time if the position is changing
-#define SMART_BEACON true 
+#define SMART_BEACON true
 
 // set your call sign and ssid  here
 // don't use mine.
@@ -72,17 +72,22 @@
 // has an LCD
 #define OPTION_LCD  true
 // backlight interval in seconds
-#define BKLIGHT_INTERVAL 20000L
+#define BKLIGHT_INTERVAL 60000L
 
 // beaconing timing 
 // update beacon every xx ms after the inital period
-// should not be set to less than 60 seconds
-#define UPDATE_BEACON 300000L
-// update beacon every xx ms during the initial period
-#define UPDATE_BEACON_INIT  60000L
-// number of times to send out a beacon during the intial period
-// after that, interval is changed to update_beacon
-int beacon_init_count = 1 ;
+// recommended settings:
+//     fixed: 30 minutes  1800 seconds
+//     mobile: 2 minutes   120 seconds
+// #define UPDATE_BEACON 300000L
+#define UPDATE_BEACON 1800000L
+
+// timing is set to update to this interval
+// if the position changes more than POSITION_CHANGE_PRECISION
+#define UPDATE_BEACON_MOVING 120000L
+
+// update beacon within  xx ms firs time through (non-smart mode)  
+#define UPDATE_BEACON_INIT  30000L
 
 // output statistics every xx ms
 #define UPDATE_DISPLAY 60000L 
@@ -95,5 +100,13 @@ int beacon_init_count = 1 ;
 
 // DRA818 port speed
 #define DRA818_PORT_BAUD  9600
+
+
+// number of characters for testing if position has changed
+// 5 = DD MM    (approx 6068 feet of lat, 4800 feet for lon) @ 38 lat
+// 6 = DD MM S  (approx 600 feet of lat, 480 feet for lon) @ 38 lat
+// 7 = DD MM SS (approx 61 ft of changes for  lat, and 48 ft for lon @ 38 lat) 
+//               warning:  will result in freq updates due to gps noise variation )
+#define POSITION_CHANGE_PRECISION 6
 
 #endif
