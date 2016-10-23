@@ -32,8 +32,9 @@
 #include "LibAPRS.h"
 #include "TinyGPSplus.h"
 #include "DRA818.h"
+#include "Log.h"
 
-#define VERSION "Beta-0.998m"
+#define VERSION "Beta-0.999a"
 #define ADC_REFERENCE REF_5V
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
@@ -61,12 +62,18 @@ int sent_count=0 ;
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
 #endif 
 
-// GPS setup
+// GPS 
 
 TinyGPSPlus gps ;
 
-
+// DRA818
 DRA818 dra(dra_serial, PTT);
+
+// Log
+//
+Log mylog;
+
+char buf[100] ;
 
 boolean gotPacket = false ;
 int recv_count = 0 ;
@@ -91,48 +98,39 @@ void aprs_msg_callback(struct AX25Msg *msg)
 
 void processPacket()
 {
+   char tmpbuf[100] ; 
    if(gotPacket) {
       gotPacket = false ;
       recv_count++ ;
+
       if( gps.date.isValid() ) {
-          serialdb->print(gps.date.year()) ;
-          serialdb->print("-") ;
-          serialdb->print(gps.date.month()) ;
-          serialdb->print("-") ;
-          serialdb->print(gps.date.day()) ;
-          serialdb->print(" ") ;
-          if (gps.time.hour() < 10 ) serialdb->print("0") ;
-          serialdb->print(gps.time.hour()) ;
-          serialdb->print(":") ;
-          if (gps.time.minute() < 10 ) serialdb->print("0") ;
-          serialdb->print(gps.time.minute()) ;
-          serialdb->print(":") ;
-          if (gps.time.second() < 10 ) serialdb->print("0") ;
-          serialdb->print(gps.time.second()) ;
-          serialdb->print(" ") ;
+          sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d", 
+                  gps.date.year(), gps.date.month(), gps.date.day(),
+                  gps.time.hour(), gps.time.minute(), gps.time.second()
+                 ) ;
+      } 
+
+      mylog.send(tmpbuf) ;
+
+      sprintf(tmpbuf,"%s-%d %s-%d",
+              incomingPacket.src.call, incomingPacket.src.ssid, 
+              incomingPacket.dst.call, incomingPacket.dst.ssid );
+
+      mylog.send(tmpbuf) ;
+
+      int i = 0 ; 
+      for(i = 0; i < incomingPacket.rpt_count ; i++) {
+        sprintf(tmpbuf," %s-%d",incomingPacket.rpt_list[i].call, incomingPacket.rpt_list[i].ssid);
+        mylog.send(tmpbuf) ;
       }
 
-      serialdb->print(F(",Rcv Pkt:s:"));
-      serialdb->print(incomingPacket.src.call);
-      serialdb->print(F("-")) ;
-      serialdb->print(incomingPacket.src.ssid);
-      serialdb->print(F(",d:")) ;
-      serialdb->print(incomingPacket.dst.call);
-      serialdb->print(F("-")) ;
-      serialdb->print(incomingPacket.dst.ssid);
-
-      for(int i = 0; i < incomingPacket.rpt_count ; i++) {
-        serialdb->print(F(",r:")) ;
-        serialdb->print(incomingPacket.rpt_list[i].call);
-        serialdb->print(F("-")) ;
-        serialdb->print(incomingPacket.rpt_list[i].ssid);
+      for(i = 0; i < incomingPacket.len; i++) {
+           tmpbuf[i]  = (char) incomingPacket.info[i] ;
       }
 
-      serialdb->print(F(",data:")) ;
-      for(int i = 0; i < incomingPacket.len; i++) {
-          serialdb->print( (char) incomingPacket.info[i]) ;
-      }
-      serialdb->println("") ;
+      tmpbuf[i] = '\0' ;
+      mylog.send(tmpbuf) ;
+
 
       free(packetData) ;
 
@@ -172,55 +170,35 @@ double  ddtodmh(float dd) {
 void setup()
 {
 
-#ifdef OPTION_LCD
-   lcd.begin(16,2);
-   lcd.clear();
-   lcd.print(F("LART/1 APRS BEAC")); 
-   lcd.setCursor(0,1);
-   lcd.print(F("Call: ")) ;
-   lcd.print(CALLSIGN) ;
-   lcd.print("-") ;
-   lcd.print(SSID) ;
-#endif
-
    dra_serial->begin(9600) ;
    serialgps->begin(4800) ;
    serialdb->begin(9600) ;
 
-   serialdb->println(F("LART/1 APRS Beacon")) ;
-   serialdb->print(CALLSIGN) ;
-   serialdb->print("-") ;
-   serialdb->println(SSID) ;
-   serialdb->print(F("Version:"));
-   serialdb->println(VERSION);
+   lcd.begin(16,2);
 
+   mylog.Log_Init(serialdb, &lcd) ;
+
+   mylog.send(F("LART/1 APRS BEACON")) ;
+
+   sprintf(buf,"CS:%s-%d",CALLSIGN,SSID);  
+   mylog.send(buf) ;
    delay(1000UL) ;
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("Version:"));
-   lcd.setCursor(0,1);
-   lcd.print(VERSION);
-#endif
+
+   sprintf(buf,"Ver: %s",VERSION);  
+   mylog.send(buf);
    delay(1000UL);
+
    // DRA818 Setup
    // must set these, then call WriteFreq
    //
    if ( dra.heartbeat() )  {
-#ifdef OPTION_LCD
-       lcd.clear();
-       lcd.print(F("Txcr OK")) ;
-#endif 
-      serialdb->println(F("Transceiver Check OK")) ;
+       mylog.send(F("Txcr OK Chk")) ;
    } else {
-#ifdef OPTION_LCD
-       lcd.clear();
-       lcd.print(F("Txcr Fail")) ;
-#endif 
-   serialdb->println(F("Transceiver Check Fail:")) ;
-   serialdb->println(dra.response) ;
+       mylog.send(F("Txcr Fail Chk")) ;
    } 
-
    delay(500UL);
+
+   mylog.send(F("Freq Set"));
    dra.setFreq(TXFREQ,RXFREQ);
    dra.setTXCTCSS(TXCTCSS);
    dra.setSquelch(SQUELCH);
@@ -228,56 +206,19 @@ void setup()
    dra.setBW(BW); // 0 = 12.5k, 1 = 25k
    dra.writeFreq();
    delay(1000UL);
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("Freq Set"));
-#endif 
-   serialdb->println(F("Txcr Freq and Tones Set")) ;
 
+   mylog.send(F("Vol Set"));
    dra.setVolume(VOL);
    delay(500UL);
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("Vol Set"));
-#endif
-   serialdb->println(F("Txcr Vol Set")) ;
-   dra.setVolume(VOL);
 
+   mylog.send(F("Filter Set"));
    dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS);
    delay(500UL);
 
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("Filter Set"));
-#endif 
-
-   serialdb->println(F("Txcr Filters Set")) ;
    dra.setPTT(LOW);
    delay(500UL);
 
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(TXFREQ) ;
-   lcd.print(F("/")) ;
-   lcd.print(RXFREQ) ;
-   lcd.setCursor(0,1) ;
-   lcd.print(F(" TC: ")) ;
-   lcd.print(0) ;
-   lcd.print(F(" RC: ")) ;
-   lcd.print(0) ;
-#endif
-
-   serialdb->print(F("Txcr TX/RX Freqs: ")) ;
-   serialdb->print(TXFREQ) ;
-   serialdb->print(F("/")) ;
-   serialdb->print(RXFREQ) ;
-   serialdb->print(F(" Tones: ")) ;
-   serialdb->print(TXCTCSS) ;
-   serialdb->print(F("/")) ;
-   serialdb->println(RXCTCSS) ;
-
-   delay(500UL) ;
-
+   mylog.send(F("APRS setup")) ;
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
    APRS_setCallsign(CALLSIGN, SSID);
    APRS_setDestination(APRS_DEST,0);
@@ -286,18 +227,11 @@ void setup()
    APRS_setPreamble(PREAMBLE);
    APRS_setTail(TAIL);
    APRS_setSymbol(SYMBOL);
-
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("APRS setup")) ;
-#endif 
-   serialdb->println(F("APRS TNC complete")) ;
    delay(500UL) ;
-#ifdef OPTION_LCD
-   lcd.clear();
-   lcd.print(F("Setup Complete")) ;
-#endif
-   serialdb->println(F("Setup complete")) ;
+
+   mylog.send(F("Setup Complete")) ;
+   delay(500UL) ;
+   mylog.send(F("Ready")) ;
 
 }
 
@@ -357,10 +291,7 @@ void loop()
             update_beacon = UPDATE_BEACON ;
             beacon_init_count = 10000 ;
          }
-#ifdef OPTION_LCD
-         lcd.clear();
-         lcd.print(F("sending packet"));
-#endif
+         mylog.send(F("sending packet"));
          locationUpdate(lat,lon,alt,0,1,0,0) ;
          sent_count++ ;
          forcedisplay = true ; 
@@ -374,30 +305,16 @@ void loop()
      lastupdatedisplay = millis() ;
          forcedisplay = false ;
 
-#ifdef OPTION_LCD
-         lcd.clear();
-         lcd.print(F("s: ")) ;
-         lcd.print(sent_count) ;
-         lcd.print(F(" r: ")) ;
-         lcd.print(recv_count) ;
-         lcd.setCursor(0,1);
+
+         sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
+         mylog.send(buf) ;
 
          if ( gps.location.isValid() )  {
-            lcd.print(F("gps fix")) ;
+            mylog.send(F("gps fix")) ;
          } else {
-            lcd.print(F("gps no fix")) ;
+            mylog.send(F("gps no fix")) ;
          }
-#endif
-         serialdb->print(F("Stats:sent:")) ;
-         serialdb->print(sent_count) ;
-         serialdb->print(F(",recv:")) ;
-         serialdb->print(recv_count) ;
-         serialdb->print(F(",")) ;
-         if ( gps.location.isValid() )  {
-            serialdb->println(F("gps fix")) ;
-         } else {
-            serialdb->println(F("gps no fix")) ;
-         }
+
          APRS_printSettings(serialdb) ;
 
      } 
