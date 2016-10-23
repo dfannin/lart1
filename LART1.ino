@@ -34,7 +34,7 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999a"
+#define VERSION "Beta-0.999b"
 #define ADC_REFERENCE REF_5V
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
