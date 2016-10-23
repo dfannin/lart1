@@ -77,7 +77,7 @@ void DRA818::setSquelch(uint8_t sql){
     }
 }
 
-void DRA818::writeFreq(void){
+bool DRA818::writeFreq(void){
     digitalWrite(this->PTT_PIN, LOW);// Set PTT off, so we can communicate with the uC.
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
@@ -87,12 +87,15 @@ void DRA818::writeFreq(void){
     dtostrf(this->tx_freq,8,4,freq_buffer);
     dtostrf(this->rx_freq,8,4,rx_freq_buffer);
     sprintf(this->buffer,"AT+DMOSETGROUP=%1d,%s,%s,%04d,%1d,%04d\r\n",this->bw,freq_buffer,rx_freq_buffer,this->tx_ctcss,this->squelch,this->rx_ctcss);
+
+    this->clearinput() ;
     this->serial->write(this->buffer);
-    // this->serial->flush() ;
-    // this->readResponse() ;
+    this->serial->flush() ;
+    this->readResponse() ;
+    return ( strncmp(this->response,"+DMOSETGROUP:0\r\n",14) == 0 )? true : false ; 
 }
 
-void DRA818::setVolume(uint8_t vol){
+bool DRA818::setVolume(uint8_t vol){
     if(vol>=1 && vol<=8){
         this->volume = vol;
     }
@@ -100,13 +103,15 @@ void DRA818::setVolume(uint8_t vol){
     digitalWrite(this->PTT_PIN, LOW); // Set PTT off, so we can communicate with the uC.
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
+    this->clearinput() ;
     sprintf(this->buffer,"AT+DMOSETVOLUME=%1d\r\n",this->volume);
     this->serial->write(this->buffer);
-    // this->serial->flush() ;
-    // this->readResponse() ;
+    this->serial->flush() ;
+    this->readResponse() ;
+    return ( strncmp(this->response,"+DMOSETVOLUME:0\r\n",15) == 0 )? true : false ; 
 }
 
-void DRA818::setFilters(boolean preemph, boolean highpass, boolean lowpass){
+bool DRA818::setFilters(boolean preemph, boolean highpass, boolean lowpass){
     // Gratuitous use of the ternary operator.
     this->preemph=preemph?0:1;
     this->highpass=highpass?0:1;
@@ -115,10 +120,13 @@ void DRA818::setFilters(boolean preemph, boolean highpass, boolean lowpass){
     digitalWrite(this->PTT_PIN, LOW); // Set PTT off, so we can communicate with the uC.
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
+    this->clearinput() ;
     sprintf(this->buffer,"AT+SETFILTER=%1d,%1d,%1d\r\n",int(this->preemph),int(this->highpass),int(this->lowpass));
     this->serial->write(this->buffer);
-    // this->serial->flush() ;
-    // this->readResponse() ;
+    this->serial->flush() ;
+    this->readResponse() ;
+    return ( strncmp(this->response,"+DMOSETFILTER:0\r\n",15) == 0 )? true : false ; 
+
 }
 
 void DRA818::setBW(uint8_t bw) {
@@ -134,6 +142,14 @@ void DRA818::setPTT(bool ptt) {
         digitalWrite(this->PTT_PIN, LOW);
     }
 }
+
+
+void DRA818::clearinput(void) {
+    while ( this->serial->available() > 0 ) {
+        char c = this->serial->read() ;
+    }
+} 
+
 
 void DRA818::readResponse() {
 
@@ -162,12 +178,9 @@ bool DRA818::heartbeat() {
     digitalWrite(this->PTT_PIN, LOW); 
     delay(250); 
 
+    this->clearinput() ;
     this->serial->write("AT+DMOCONNECT\r\n") ;
     this->serial->flush() ;
     this->readResponse() ;
-    if ( strncmp(this->response,"+DMOCONNECT:0\r\n",13) == 0 ) {
-        return true ;
-    } else {
-        return false ; 
-    }
+    return ( strncmp(this->response,"+DMOCONNECT:0\r\n",13) == 0 )? true : false ; 
 }

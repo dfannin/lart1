@@ -34,15 +34,16 @@ class DRA818 {
         // Constructors
         DRA818(Stream *serial, uint8_t PTT);
 
-        void setFreq(float tx_freq,float rx_freq=0);
+        void setFreq(float tx_freq, float rx_freq=0);
         void setTXCTCSS(uint8_t ctcss);
         void setRXCTCSS(uint8_t ctcss);
         void setSquelch(uint8_t sql);
-        void setVolume(uint8_t vol);
-        void setFilters(boolean preemph, boolean highpass, boolean lowpass);
-        void writeFreq(void);
+        bool setVolume(uint8_t vol);
+        bool setFilters(boolean preemph, boolean highpass, boolean lowpass);
+        bool writeFreq(void);
         void setBW(uint8_t bw);
         void setPTT(bool ptt);
+        void clearinput(void) ;
         void readResponse() ;
         bool heartbeat();
 

@@ -34,7 +34,7 @@
 #include "DRA818.h"
 #include "Log.h"
 
-#define VERSION "Beta-0.999b"
+#define VERSION "Beta-0.999c"
 #define ADC_REFERENCE REF_5V
 
 // sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
@@ -198,21 +198,35 @@ void setup()
    } 
    delay(500UL);
 
-   mylog.send(F("Freq Set"));
+   // set freq and tones
    dra.setFreq(TXFREQ,RXFREQ);
    dra.setTXCTCSS(TXCTCSS);
    dra.setSquelch(SQUELCH);
    dra.setRXCTCSS(RXCTCSS);
    dra.setBW(BW); // 0 = 12.5k, 1 = 25k
-   dra.writeFreq();
+   if ( dra.writeFreq() ) {
+        mylog.send(F("Freq Set"));
+    } else {
+        mylog.send(F("Freq Fail"));
+    }
    delay(1000UL);
 
-   mylog.send(F("Vol Set"));
-   dra.setVolume(VOL);
+   if ( dra.setVolume(VOL) ) {
+        mylog.send(F("Vol Set"));
+    } else {
+        mylog.send(F("Vol Fail"));
+
+    } 
+
+
    delay(500UL);
 
-   mylog.send(F("Filter Set"));
-   dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS);
+   if ( dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS) ) {
+      mylog.send( F("Filter Set") );
+   } else { 
+      mylog.send( F("Filter Fail") );
+   }
+
    delay(500UL);
 
    dra.setPTT(LOW);
@@ -310,7 +324,14 @@ void loop()
          mylog.send(buf) ;
 
          if ( gps.location.isValid() )  {
-            mylog.send(F("gps fix")) ;
+
+             char datebuf[20] ; 
+
+             sprintf(datebuf,"%4d-%02d-%02d %02d:%02d:%02d", 
+                  gps.date.year(), gps.date.month(), gps.date.day(),
+                  gps.time.hour(), gps.time.minute(), gps.time.second()
+                 ) ;
+            mylog.send(datebuf) ;
          } else {
             mylog.send(F("gps no fix")) ;
          }
