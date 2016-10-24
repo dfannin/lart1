@@ -33,8 +33,9 @@
 #include "TinyGPSplus.h"
 #include "DRA818.h"
 #include "Log.h"
+#include "SD.h"
 
-#define VERSION "Beta-0.999g"
+#define VERSION "Beta-0.999h"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -48,7 +49,9 @@ HardwareSerial  * serialgps  = &Serial1 ;
 // DRA818 port
 HardwareSerial * dra_serial = &Serial2 ;
 
-
+char aprs_callsign[10] ;
+int  aprs_ssid ;
+char aprs_comment[40] ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
@@ -74,6 +77,8 @@ DRA818 dra(dra_serial, PTT);
 
 // Log
 Log mylog;
+
+
 
 char buf[100] ;
 
@@ -156,7 +161,7 @@ void locationUpdate(const char *lat, const char *lon,int altitude, int height = 
    // APRS_setPower(power);
    // APRS_setGain(gain);
    // APRS_setDirectivity(dir);
-   sprintf(comment,"/A=%06dLART-1 Tracker beta",altitude) ;
+   sprintf(comment,"/A=%06d%s",altitude,aprs_comment) ;
    APRS_sendLoc(comment, strlen(comment),serialdb);
 }
 
@@ -172,12 +177,103 @@ double  ddtodmh(float dd) {
 }
 
 
+// readConfig functions
+
+void rtrim(char * str) {
+    int endc = strlen(str) - 1 ; 
+
+    while ( ( str[endc] == ' ' ||
+              str[endc] == '\t' ) 
+                && endc >= 0 ) {
+        str[endc] = '\0' ; 
+        endc --  ;
+    }
+}
+
+
+
+void setParam(int p, const char *buf) {
+
+    switch(p) {
+        case 1:
+            strcpy(aprs_callsign,buf);
+            break ;
+        case 2:
+            aprs_ssid = atoi(buf);
+            break ;
+        case 3:
+            strcpy(aprs_comment,buf);
+            break ;
+        default:
+            break ;
+    } 
+} 
+
+bool readConfig(File *cf) {
+
+    int ccnt = 0 ;
+    int lcnt = 0 ; 
+    char pbuf[40] ;
+    bool cmode = false ;
+    bool cferror = false ;
+
+
+    pbuf[0] = '\0';
+
+    while (cf->available()) {
+
+        char c = cf->read() ; 
+
+        // terminate the line and set the param on CR or LF
+        if ( c == '\r' || c == '\n' ) {
+            // if the next char is NL or CR, then slurp it up
+            // should work for win, linux or mac edited files
+            if ( cf->peek() == '\n' || cf->peek() == '\r') {
+                cf->read() ;
+            }
+            rtrim(pbuf) ;
+            if ( strlen(pbuf) > 0 ) setParam(++lcnt, pbuf) ;
+            pbuf[0] = '\0' ;
+            ccnt = 0  ;
+            cmode = false  ;
+            continue ;
+        }
+
+        if ( cmode ) continue ;
+
+
+        if ( c ==  '#' ) {
+            cmode = true ;
+            continue ;
+        }
+
+        if ( ccnt > 38 )  {
+            cmode = true ;
+            continue ;
+        } 
+
+        pbuf[ccnt++] =  c ; 
+        pbuf[ccnt] = '\0' ;
+
+    }
+
+    return !cferror ;
+    
+}
+
 void setup()
 {
+
 
    dra_serial->begin(DRA818_PORT_BAUD) ;
    serialgps->begin(GPS_PORT_BAUD) ;
    serialdb->begin(USB_PORT_BAUD) ;
+
+   if ( !SD.begin(4) ) {
+       mylog.send(F("sd init fail")) ; 
+       delay(1000) ;
+       exit(0) ;
+   }
 
    lcd.begin(16,2);
 
@@ -185,7 +281,26 @@ void setup()
 
    mylog.send(F("LART/1 APRS TRAK")) ;
 
-   sprintf(buf,"CS:%s-%d",CALLSIGN,SSID);  
+   const char *fname = "/config.txt" ;
+
+   File configFile  = SD.open(fname) ; 
+
+   if (! configFile) {
+       mylog.send(F("cfg read fail")) ; 
+       delay(1000) ;
+       exit(0) ;
+   }
+
+   if (!readConfig(&configFile) )  {
+       mylog.send(F("cfg set fail")) ; 
+       delay(1000) ;
+       exit(0) ;
+   }
+
+   mylog.send(F("cfg ok")) ; 
+   configFile.close() ;
+
+   sprintf(buf,"CS:%s-%d",aprs_callsign,aprs_ssid);  
    mylog.send(buf) ;
    delay(1000UL) ;
 
@@ -254,7 +369,7 @@ void setup()
 
    mylog.send(F("APRS setup")) ;
    APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
-   APRS_setCallsign(CALLSIGN, SSID);
+   APRS_setCallsign(aprs_callsign, aprs_ssid);
    APRS_setDestination(APRS_DEST,0);
    APRS_setPath1(PATH1,PATH1_SSID);
    APRS_setPath2(PATH2,PATH2_SSID);

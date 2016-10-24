@@ -10,10 +10,9 @@
 // adapts beacon update time if the position is changing
 #define SMART_BEACON true
 
-// set your call sign and ssid  here
-// don't use mine.
-#define CALLSIGN "KK6DF"
-#define SSID 2
+// set your call sign and ssid in the config file
+#define CALLSIGN "NOCALL"
+#define SSID 0 
 
 // DRA818 Transceiver 
 // APRS 2 meter tx and rx frequency for North America  (134-174MHz) 
