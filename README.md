@@ -7,6 +7,7 @@ This arduino software provides an aprs tracker, which can act as an APRS beacon 
 Unlike commerical units, this tracker was designed for low cost and easy of use. 
 
 # Features
++ Reads configuration from SD card
 + Send APRS position reports (fields sent: lat/lon/altitude/comments)
     + A PHGD (Power, Height, Gain and Directivity) option available
 + SMART Beacon Mode
@@ -19,7 +20,6 @@ Unlike commerical units, this tracker was designed for low cost and easy of use.
 + Receives APRS message and print output
     + KISS interface planned 
 + LCD Display with Status LEDs
-+ Single Configuration File (LART1_Settings.h)
     
 
 # Hardware
