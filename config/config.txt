@@ -1,0 +1,7 @@
+# sample config file (copy to SD card in a file  "config.txt")  
+# text after "#" are considered comments and are ignored
+# note: order of the parameters is important, and all parameters are required!
+# also, no leading spaces allowed in parameter lines (lagging spaces are trimmed) 
+NOCALL # CallSign of the Tracker
+2 # SSID
+LART1 Track # Comment field sent out with APRS message (limited to 20 chars)
