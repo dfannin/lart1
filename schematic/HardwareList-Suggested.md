@@ -1,6 +1,8 @@
+# Suggested Hardware List for LART/1 Tracker
+
 What you'll need for the LART/1 Tracker (a/o 2016) 
 
-+Arduino Mega2560 board or compatible
++ Arduino Mega2560 board or compatible
     + LART/1 uses three serial ports, so the Mega is the only choice. The script is too large to compile for the Uno/Nano or other 328p-based boards. 
     + Mega2560-core (from Inhaos)  http://www.inhaos.com/uploadfile/otherpic/DS-Mega2560-CORE-V01-EN.pdf
         + this one was used for development
