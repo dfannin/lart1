@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999h"
+#define VERSION "Beta-0.999i"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -56,7 +56,7 @@ char aprs_comment[40] ;
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
 // set the outer beacon check loop to 30 seconds (do not change).
-unsigned long update_check = 30000L ;
+unsigned long update_check = 15000L ;
 unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
