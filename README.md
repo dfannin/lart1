@@ -10,7 +10,7 @@ Unlike commerical units, this tracker was designed for low cost and easy of use.
 + Reads configuration from SD card
 + Send APRS position reports (fields sent: lat/lon/altitude/comments)
     + A PHGD (Power, Height, Gain and Directivity) option available
-+ SMART Beacon Mode
++ Adaptive Interval Beacon Mode
     + adjusts update intervals based on degree of position change (includes change precision setting) 
 + Adjustable Update Intervals 
 + Adjustable APRS packet settings
