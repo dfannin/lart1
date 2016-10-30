@@ -8,7 +8,7 @@
 // turn on aprs packet receiver serial output
 #define APRS_RECV    true
 // adapts beacon update time if the position is changing
-#define SMART_BEACON true
+#define NOTSOSMART_BEACON true
 
 // set your call sign and ssid in the config file
 #define CALLSIGN "NOCALL"
@@ -79,14 +79,15 @@
 //     fixed: 30 minutes  1800 seconds
 //     fixed: 20 minutes  1200 seconds
 //     mobile: 1 or 2 minutes  60 120 seconds
-// #define UPDATE_BEACON 300000L
-#define UPDATE_BEACON 1200000L
+// #define UPDATE_BEACON_FIXED 300000L
+// Fixed is used for both NoSoSmart (as stopped interval) and Fixed as the interval
+#define UPDATE_BEACON_FIXED 1200000L
 
 // timing is set to update to this interval
 // if the position changes more than POSITION_CHANGE_PRECISION
 #define UPDATE_BEACON_MOVING 60000L
 
-// update beacon within  xx ms firs time through (non-smart mode)  
+// update beacon within  xx ms firs time through (for smart mode)  
 #define UPDATE_BEACON_INIT  30000L
 
 // output statistics every xx ms

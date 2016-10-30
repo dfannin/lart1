@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999i"
+#define VERSION "Beta-0.999j"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -56,7 +56,7 @@ char aprs_comment[40] ;
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
 // set the outer beacon check loop to 30 seconds (do not change).
-unsigned long update_check = 15000L ;
+unsigned long update_check = 30000L ;
 unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
@@ -265,6 +265,16 @@ void setup()
 {
 
 
+   pinMode(48,OUTPUT) ;
+   pinMode(47,OUTPUT) ;
+
+   digitalWrite(48,HIGH) ;
+   digitalWrite(47,HIGH) ;
+   delay(750) ;
+   digitalWrite(48,LOW);
+   digitalWrite(47,LOW);
+
+
    dra_serial->begin(DRA818_PORT_BAUD) ;
    serialgps->begin(GPS_PORT_BAUD) ;
    serialdb->begin(USB_PORT_BAUD) ;
@@ -385,7 +395,7 @@ void setup()
 
    sprintf(buf,"Beacon Mode %d",APRS_BEACON) ;
    mylog.send(buf) ;
-   sprintf(buf,"Smart Mode %d",SMART_BEACON) ;
+   sprintf(buf,"NotSmart Mode %d",NOTSOSMART_BEACON) ;
    mylog.send(buf) ;
    delay(500UL) ;
 
@@ -398,7 +408,8 @@ void setup()
 char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
 int alt = 0 ;
-bool position_changed = true ;
+bool position_changed = false ;
+bool lastpositionsent = false ;
 char  prevlat[] =  "0000.00N" ;
 char  prevlon[] = "00000.00W" ;
 
@@ -466,22 +477,33 @@ void loop()
        if ( gps.location.isValid() )  {
 
            // set the update_beacon interval
-           // for smart beacon mode , set it based on position changes
-           // for dumb beacon mode, uses UPDATE_BEACON_INIT first time through, then UPDATE_BEACON
-           if ( SMART_BEACON ) {
+           // for not so smart beacon mode , set it based on position changes
+           // for dumb beacon mode, uses UPDATE_BEACON_INIT first time through, then UPDATE_BEACON_FIXED
+           //
+           // Notsosmart algorithm
+           // if ( position changed ) 
+           // then interval = moving, sent out next time 
+           // else if ( lastposition was sent) 
+           //      then interval = fixed
+           //      else keep the previous one (fixed or moving) 
+           // 
+           //
+           if ( NOTSOSMART_BEACON ) {
               if ( position_changed ) {
                  update_beacon = UPDATE_BEACON_MOVING ; 
-                 // add this to make sure the location is sent first time thru the loop
-                 if (millis() > UPDATE_BEACON_MOVING * 2) {
-                    position_changed = false ;
-                 } 
+                 position_changed = false ;
+                 lastpositionsent = false ;
               } else {
-                 update_beacon = UPDATE_BEACON ;
+                 if (lastpositionsent) { 
+                    update_beacon = UPDATE_BEACON_FIXED ;
+                    lastpositionsent = false ;
+                 } 
               } 
            } else { 
-              // add this to make sure location is sent first time thru the loop
-              if ( millis() > UPDATE_BEACON_INIT * 2 ) {
-                 update_beacon = UPDATE_BEACON ;
+              // add this to make sure the location is sent first time thru the loop
+              if (lastpositionsent) {
+                 update_beacon = UPDATE_BEACON_FIXED ;
+                 lastpositionsent = false ;
               }
            } 
 
@@ -495,6 +517,7 @@ void loop()
               mylog.send(F("sending loc"));
               locationUpdate(lat,lon,alt,0,1,0,0) ;
               sent_count++ ;
+              lastpositionsent = true ;
               forcedisplay = true ; 
 
           }
