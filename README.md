@@ -7,10 +7,10 @@ This arduino software provides an aprs tracker, which can act as an APRS beacon 
 Unlike commerical units, this tracker was designed for low cost and easy of use. 
 
 # Features
-+ Reads configuration from SD card
++ Reads configuration from SD card (and writes a log file)
 + Send APRS position reports (fields sent: lat/lon/altitude/comments)
     + A PHGD (Power, Height, Gain and Directivity) option available
-+ Adaptive Interval Beacon Mode
++ Adaptive Interval Beacon Mode (NotSoSmart_Beacon mode) 
     + adjusts update intervals based on degree of position change (includes change precision setting) 
 + Adjustable Update Intervals 
 + Adjustable APRS packet settings
@@ -28,6 +28,7 @@ LART1 requires/assumes the following hardware:
 + APRS circuit based on the MicroModem Circuit. A schematic is provided.  
 + GPS that provides NMEA output.  The Ublox Neo-6m GPS, used for flight controllers, are a good choice. 
 + 2 meter transceiver module (recommend a DRA818vhf or SA818vhf) 
++ SD Card (for setting configuration data, and writing a log)
 
 # Dependencies
 requires the following libraries to be installed in your Arduino Sketchbook `libraries/` directory. 
