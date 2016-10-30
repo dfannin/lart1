@@ -9,10 +9,14 @@
 #define APRS_RECV    true
 // adapts beacon update time if the position is changing
 #define NOTSOSMART_BEACON true
+// writes SD Log file 
+#define SDLOG_WRITE false
 
 // set your call sign and ssid in the config file
-#define CALLSIGN "NOCALL"
-#define SSID 0 
+// 
+
+// default message comment
+#define APRS_COMMENT "LART1 Track"
 
 // DRA818 Transceiver 
 // APRS 2 meter tx and rx frequency for North America  (134-174MHz) 
@@ -66,6 +70,8 @@
 // 'b' Bike
 // 'p' Rover (puppy)
 #define SYMBOL 'n' 
+
+#define USE_ALT_SYM_TABLE false 
 
 //
 // has an LCD

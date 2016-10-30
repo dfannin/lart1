@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999j"
+#define VERSION "Beta-0.999k"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -49,9 +49,14 @@ HardwareSerial  * serialgps  = &Serial1 ;
 // DRA818 port
 HardwareSerial * dra_serial = &Serial2 ;
 
+// setting the default parameters
 char aprs_callsign[10] ;
 int  aprs_ssid ;
 char aprs_comment[40] ;
+bool aprs_beacon = APRS_BEACON  ;
+bool aprs_recv = APRS_RECV ;
+bool notsosmart_beacon = NOTSOSMART_BEACON ; 
+bool sdlog_write = SDLOG_WRITE ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
@@ -110,7 +115,7 @@ void processPacket()
       gotPacket = false ;
       recv_count++ ;
 
-      if ( APRS_RECV ) {
+      if ( aprs_recv ) {
 
           if( gps.date.isValid() ) {
               sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d", 
@@ -204,6 +209,19 @@ void setParam(int p, const char *buf) {
         case 3:
             strcpy(aprs_comment,buf);
             break ;
+        case 4:
+            aprs_beacon =(bool)  atoi(buf) ;
+            break ;
+        case 5:
+            aprs_recv = (bool) atoi(buf) ;
+            break ;
+        case 6:
+            notsosmart_beacon = (bool) atoi(buf) ;
+            break ;
+        case 7:
+            sdlog_write = (bool) atoi(buf) ;
+            break ;
+        case 0: 
         default:
             break ;
     } 
@@ -212,8 +230,11 @@ void setParam(int p, const char *buf) {
 bool readConfig(File *cf) {
 
     int ccnt = 0 ;
-    int lcnt = 0 ; 
-    char pbuf[40] ;
+    int pnum = 0 ;  
+    char pbuf[50] ;
+    char pnumbuf[5] ;
+
+    bool pnmode = true ;
     bool cmode = false ;
     bool cferror = false ;
 
@@ -232,11 +253,40 @@ bool readConfig(File *cf) {
                 cf->read() ;
             }
             rtrim(pbuf) ;
-            if ( strlen(pbuf) > 0 ) setParam(++lcnt, pbuf) ;
-            pbuf[0] = '\0' ;
+
+            if ( strlen(pbuf) > 0 || pnum != 0 ) setParam(pnum, pbuf) ;
             ccnt = 0  ;
+            pnum = 0 ; 
+            pbuf[0] = '\0' ;
+            pnumbuf[0]= '\0';
             cmode = false  ;
+            pnmode = true ;
             continue ;
+        }
+
+        if (pnmode) {
+            // if the parameter number is not found, then punt and ignore the line
+            if ( ccnt > 5 ) {
+                cmode = true ;
+                cferror = true ; 
+                pnmode = false ;
+                ccnt = 0 ;
+                continue ;
+            }
+            // when the number is read
+            // move to reading the parameter value
+            if ( c == ',' ) {
+                pnmode = false ;
+                ccnt = 0 ; 
+                pnum  = atoi(pnumbuf) ;
+            } 
+
+            // read the parameter number and store in a buffer
+
+            pnumbuf[ccnt++] = c ; 
+            pnumbuf[ccnt] = '\0' ;
+            continue ; 
+
         }
 
         if ( cmode ) continue ;
@@ -247,7 +297,7 @@ bool readConfig(File *cf) {
             continue ;
         }
 
-        if ( ccnt > 38 )  {
+        if ( ccnt > 48 )  {
             cmode = true ;
             continue ;
         } 
@@ -264,6 +314,7 @@ bool readConfig(File *cf) {
 void setup()
 {
 
+   strcpy(aprs_comment,APRS_COMMENT) ;
 
    pinMode(48,OUTPUT) ;
    pinMode(47,OUTPUT) ;
@@ -386,16 +437,16 @@ void setup()
    APRS_setPreamble(PREAMBLE);
    APRS_setTail(TAIL);
    APRS_setSymbol(SYMBOL);
-   if (APRS_BEACON) APRS_printSettings(serialdb) ;
+   if (aprs_beacon) APRS_printSettings(serialdb) ;
    delay(500UL) ;
 
-   sprintf(buf,"Receive Mode %d",APRS_RECV) ;
+   sprintf(buf,"Receive Mode %d",aprs_recv) ;
    mylog.send(buf) ;
    delay(500UL) ;
 
-   sprintf(buf,"Beacon Mode %d",APRS_BEACON) ;
+   sprintf(buf,"Beacon Mode %d",aprs_beacon) ;
    mylog.send(buf) ;
-   sprintf(buf,"NotSmart Mode %d",NOTSOSMART_BEACON) ;
+   sprintf(buf,"NotSmart Mode %d",notsosmart_beacon) ;
    mylog.send(buf) ;
    delay(500UL) ;
 
@@ -470,7 +521,7 @@ void loop()
 
 
    // outer update check loop 
-   if (APRS_BEACON && ( millis() - lastcheck) > update_check ) {
+   if (aprs_beacon  && ( millis() - lastcheck) > update_check ) {
        lastcheck = millis () ;
 
        // don't do anything unless gps is valid
@@ -488,7 +539,7 @@ void loop()
            //      else keep the previous one (fixed or moving) 
            // 
            //
-           if ( NOTSOSMART_BEACON ) {
+           if ( notsosmart_beacon ) {
               if ( position_changed ) {
                  update_beacon = UPDATE_BEACON_MOVING ; 
                  position_changed = false ;
