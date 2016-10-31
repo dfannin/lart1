@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999k"
+#define VERSION "Beta-0.999l"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -57,8 +57,17 @@ bool aprs_beacon = APRS_BEACON  ;
 bool aprs_recv = APRS_RECV ;
 bool notsosmart_beacon = NOTSOSMART_BEACON ; 
 bool sdlog_write = SDLOG_WRITE ;
+double txfreq = TXFREQ ;  
+double rxfreq = RXFREQ ;
+int txctcss = TXCTCSS ;
+int rxctcss = RXCTCSS ;
+int volume = VOL ;
+int squelch = SQUELCH ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
+
+unsigned long update_beacon_fixed = UPDATE_BEACON_FIXED ;
+unsigned long update_beacon_moving = UPDATE_BEACON_MOVING ;
 
 // set the outer beacon check loop to 30 seconds (do not change).
 unsigned long update_check = 30000L ;
@@ -110,40 +119,50 @@ void aprs_msg_callback(struct AX25Msg *msg)
 
 void processPacket()
 {
-   char tmpbuf[100] ; 
    if(gotPacket) {
+      char outbuf[180] ; 
+      char tmpbuf[100];
+
       gotPacket = false ;
       recv_count++ ;
+
+      outbuf[0] = '\0';
+      strcpy(tmpbuf,"0000-00-00 00:00:00 ") ;
 
       if ( aprs_recv ) {
 
           if( gps.date.isValid() ) {
-              sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d", 
+              sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d ", 
                       gps.date.year(), gps.date.month(), gps.date.day(),
                       gps.time.hour(), gps.time.minute(), gps.time.second()
                      ) ;
           } 
 
-          mylog.send(tmpbuf) ;
 
-          sprintf(tmpbuf,"%s-%d %s-%d",
+          strcat(outbuf,tmpbuf) ;
+
+          sprintf(tmpbuf,"%s-%d,%s-%d",
                   incomingPacket.src.call, incomingPacket.src.ssid, 
                   incomingPacket.dst.call, incomingPacket.dst.ssid );
 
-          mylog.send(tmpbuf) ;
+          strcat(outbuf,tmpbuf) ;
 
           int i = 0 ; 
           for(i = 0; i < incomingPacket.rpt_count ; i++) {
             sprintf(tmpbuf," %s-%d",incomingPacket.rpt_list[i].call, incomingPacket.rpt_list[i].ssid);
-            mylog.send(tmpbuf) ;
+            strcat(outbuf,tmpbuf) ;
           }
 
-          for(i = 0; i < incomingPacket.len; i++) {
+          int maxlen = incomingPacket.len ; 
+
+          if ( strlen(outbuf) + maxlen > 179 ) maxlen = 179 - strlen(outbuf) ;
+
+          for(i = 0; i < maxlen ; i++) {
                tmpbuf[i]  = (char) incomingPacket.info[i] ;
           }
 
-          tmpbuf[i] = '\0' ;
-          mylog.send(tmpbuf) ;
+          strcat(outbuf,tmpbuf) ;
+          mylog.send(outbuf) ;
       }
 
 
@@ -182,19 +201,16 @@ double  ddtodmh(float dd) {
 }
 
 
-// readConfig functions
 
-void rtrim(char * str) {
-    int endc = strlen(str) - 1 ; 
-
-    while ( ( str[endc] == ' ' ||
-              str[endc] == '\t' ) 
-                && endc >= 0 ) {
-        str[endc] = '\0' ; 
-        endc --  ;
-    }
+void mytrim(char * str) {
+    int i ; 
+    int begin = 0 ;
+    int end = strlen(str) - 1 ; 
+    while ( isspace((unsigned char) str[begin])) begin++ ;
+    while (( end >= begin) && isspace((unsigned char) str[end])) end-- ;
+    for( i = begin; i<=end ; i++ ) str[i-begin] = str[i] ;
+    str[i-begin] = '\0';
 }
-
 
 
 void setParam(int p, const char *buf) {
@@ -221,18 +237,44 @@ void setParam(int p, const char *buf) {
         case 7:
             sdlog_write = (bool) atoi(buf) ;
             break ;
+        case 8:
+            txfreq =  atof(buf) ;
+            break ;
+        case 9:
+            rxfreq =  atof(buf) ;
+            break ;
+        case 10:
+            txctcss =  atoi(buf) ;
+            break ;
+        case 11:
+            rxctcss =  atoi(buf) ;
+            break ;
+        case 12:
+            volume =  atoi(buf) ;
+            break ;
+        case 13:
+            squelch =  atoi(buf) ;
+            break ;
+        case 25:
+            update_beacon_fixed =  atol(buf) ;
+            break ;
+        case 26:
+            update_beacon_moving =  atol(buf) ;
+            break ;
         case 0: 
+            break ;
         default:
             break ;
     } 
 } 
+
 
 bool readConfig(File *cf) {
 
     int ccnt = 0 ;
     int pnum = 0 ;  
     char pbuf[50] ;
-    char pnumbuf[5] ;
+    char pnumbuf[10] ;
 
     bool pnmode = true ;
     bool cmode = false ;
@@ -252,7 +294,7 @@ bool readConfig(File *cf) {
             if ( cf->peek() == '\n' || cf->peek() == '\r') {
                 cf->read() ;
             }
-            rtrim(pbuf) ;
+            mytrim(pbuf) ;
 
             if ( strlen(pbuf) > 0 || pnum != 0 ) setParam(pnum, pbuf) ;
             ccnt = 0  ;
@@ -264,9 +306,21 @@ bool readConfig(File *cf) {
             continue ;
         }
 
+
+        if ( cmode ) { 
+            continue ;
+        }
+
+
+        if ( c ==  '#'  || ccnt > 48 ) {
+            cmode = true ;
+            continue ;
+        }
+
+
         if (pnmode) {
             // if the parameter number is not found, then punt and ignore the line
-            if ( ccnt > 5 ) {
+            if ( ccnt > 9 ) {
                 cmode = true ;
                 cferror = true ; 
                 pnmode = false ;
@@ -279,6 +333,7 @@ bool readConfig(File *cf) {
                 pnmode = false ;
                 ccnt = 0 ; 
                 pnum  = atoi(pnumbuf) ;
+                continue ;
             } 
 
             // read the parameter number and store in a buffer
@@ -289,19 +344,6 @@ bool readConfig(File *cf) {
 
         }
 
-        if ( cmode ) continue ;
-
-
-        if ( c ==  '#' ) {
-            cmode = true ;
-            continue ;
-        }
-
-        if ( ccnt > 48 )  {
-            cmode = true ;
-            continue ;
-        } 
-
         pbuf[ccnt++] =  c ; 
         pbuf[ccnt] = '\0' ;
 
@@ -310,6 +352,7 @@ bool readConfig(File *cf) {
     return !cferror ;
     
 }
+
 
 void setup()
 {
@@ -347,13 +390,13 @@ void setup()
    File configFile  = SD.open(fname) ; 
 
    if (! configFile) {
-       mylog.send(F("cfg read fail")) ; 
+       mylog.send(F("no cfg file")) ; 
        delay(1000) ;
        exit(0) ;
    }
 
    if (!readConfig(&configFile) )  {
-       mylog.send(F("cfg set fail")) ; 
+       mylog.send(F("cfg read fail")) ; 
        delay(1000) ;
        exit(0) ;
    }
@@ -382,18 +425,18 @@ void setup()
    delay(500UL);
 
    // set freq and tones
-   dra.setFreq(TXFREQ,RXFREQ);
-   dra.setTXCTCSS(TXCTCSS);
-   dra.setSquelch(SQUELCH);
-   dra.setRXCTCSS(RXCTCSS);
+   dra.setFreq(txfreq,rxfreq);
+   dra.setTXCTCSS(txctcss);
+   dra.setSquelch(squelch);
+   dra.setRXCTCSS(rxctcss);
    dra.setBW(BW); // 0 = 12.5k, 1 = 25k
 
    char fbuf[12] ;
    if ( dra.writeFreq() ) {
-       dtostrf(TXFREQ, 8, 4, fbuf) ;
+       dtostrf(txfreq, 8, 4, fbuf) ;
        sprintf(buf,"Freq TX:%s",fbuf) ;
        mylog.send(buf);
-       dtostrf(RXFREQ, 8, 4, fbuf) ;
+       dtostrf(rxfreq, 8, 4, fbuf) ;
        sprintf(buf,"Freq RX:%s",fbuf) ;
        mylog.send(buf);
     } else {
@@ -403,8 +446,8 @@ void setup()
     }
    delay(1000UL);
 
-   if ( dra.setVolume(VOL) ) {
-       sprintf(buf,"Vol: %d", VOL) ;
+   if ( dra.setVolume(volume) ) {
+       sprintf(buf,"Vol: %d", volume) ;
        mylog.send(buf);
     } else {
         mylog.send(F("Vol Fail"));
@@ -541,19 +584,19 @@ void loop()
            //
            if ( notsosmart_beacon ) {
               if ( position_changed ) {
-                 update_beacon = UPDATE_BEACON_MOVING ; 
+                 update_beacon = update_beacon_moving ; 
                  position_changed = false ;
                  lastpositionsent = false ;
               } else {
                  if (lastpositionsent) { 
-                    update_beacon = UPDATE_BEACON_FIXED ;
+                    update_beacon = update_beacon_fixed ;
                     lastpositionsent = false ;
                  } 
               } 
            } else { 
               // add this to make sure the location is sent first time thru the loop
               if (lastpositionsent) {
-                 update_beacon = UPDATE_BEACON_FIXED ;
+                 update_beacon = update_beacon_fixed ;
                  lastpositionsent = false ;
               }
            } 
