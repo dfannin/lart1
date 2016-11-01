@@ -35,11 +35,18 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999l"
+#define VERSION "Beta-0.999m"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
-// sets PTT pin (don't change, the pin is used by Port Manipulation later on) 
+// status led 
+//
+#define LED_TX 48
+#define LED_RX 47
+#define LED_GPS 36
+//
+// Transceiver Ctl pins
+// PTT pin (don't change, the pin is used by Port Manipulation later on) 
 #define PTT 25
 
 // usb serial port
@@ -74,7 +81,10 @@ unsigned long update_check = 30000L ;
 unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
+unsigned long lastgpsupdate = 0 ;
 bool forcedisplay = false ;
+
+bool gpsfix = false ;
 
 int sent_count=0 ;
 
@@ -354,20 +364,37 @@ bool readConfig(File *cf) {
 }
 
 
+void testleds(void) {
+   pinMode(LED_TX,OUTPUT) ;
+   pinMode(LED_RX,OUTPUT) ;
+   pinMode(LED_GPS,OUTPUT) ;
+
+   digitalWrite(LED_TX,HIGH) ;
+   digitalWrite(LED_RX,HIGH) ;
+   digitalWrite(LED_GPS,HIGH) ;
+   delay(750) ;
+   digitalWrite(LED_TX,LOW);
+   digitalWrite(LED_RX,LOW);
+   digitalWrite(LED_GPS,LOW);
+   delay(750) ;
+   digitalWrite(LED_TX,HIGH) ;
+   digitalWrite(LED_RX,HIGH) ;
+   digitalWrite(LED_GPS,HIGH) ;
+   delay(750) ;
+   digitalWrite(LED_TX,LOW) ;
+   digitalWrite(LED_RX,LOW) ;
+   digitalWrite(LED_GPS,LOW) ;
+
+} 
+
+
 void setup()
 {
 
    strcpy(aprs_comment,APRS_COMMENT) ;
 
-   pinMode(48,OUTPUT) ;
-   pinMode(47,OUTPUT) ;
 
-   digitalWrite(48,HIGH) ;
-   digitalWrite(47,HIGH) ;
-   delay(750) ;
-   digitalWrite(48,LOW);
-   digitalWrite(47,LOW);
-
+   testleds() ;
 
    dra_serial->begin(DRA818_PORT_BAUD) ;
    serialgps->begin(GPS_PORT_BAUD) ;
@@ -512,55 +539,60 @@ char  prevlon[] = "00000.00W" ;
 void loop()
 {
 
-   while(serialgps->available() > 0 ) {
-       if(gps.encode(serialgps->read())) {
-           if( gps.location.isValid()) {
-              double dmh ; 
-               // latitude
-               if ( gps.location.rawLat().negative ) {
-                   dmh = ddtodmh( -gps.location.lat() )  ;
-                   dtostrf(dmh,7,2,lat) ;
-                   lat[7] = 'S';
-               } else {
-                   dmh = ddtodmh( gps.location.lat() )  ;
-                   dtostrf(dmh,7,2,lat) ;
-                   lat[7] = 'N';
-               }
-               // longitude
-               if ( gps.location.rawLng().negative ) {
-                   dmh = ddtodmh( -gps.location.lng() )  ;
-                   dtostrf(dmh,8,2,lon) ;
-                   lon[8] = 'W';
-               } else {
-                   dmh = ddtodmh(gps.location.lng() )  ;
-                   dtostrf(dmh,8,2,lon) ;
-                   lon[8] = 'E';
-               }
-               
+   // process the gps packets
+   while(serialgps->available() > 0 ) gps.encode(serialgps->read()) ;
 
-               // position change
-               //  1 100th-second = 60 feet @ 38 lat
-               //  1 100th-second = 48 feet @  lon (fairly constant) 
-               // set a precision value to compare 
-               if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
-                   strcpy(prevlat,lat) ;
-                   position_changed = true ; 
-               }
-               if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
-                   strcpy(prevlon,lon) ;
-                   position_changed = true ; 
-               }
+   // check location every 3 seconds
+
+   if ( (millis() - lastgpsupdate) > 3000 ) {
+
+       lastgpsupdate = millis() ;
 
 
+       if( gps.location.isValid() ) {
+          double dmh ; 
+           // latitude
+           if ( gps.location.rawLat().negative ) {
+               dmh = ddtodmh( -gps.location.lat() )  ;
+               dtostrf(dmh,7,2,lat) ;
+               lat[7] = 'S';
+           } else {
+               dmh = ddtodmh( gps.location.lat() )  ;
+               dtostrf(dmh,7,2,lat) ;
+               lat[7] = 'N';
            }
+           // longitude
+           if ( gps.location.rawLng().negative ) {
+               dmh = ddtodmh( -gps.location.lng() )  ;
+               dtostrf(dmh,8,2,lon) ;
+               lon[8] = 'W';
+           } else {
+               dmh = ddtodmh(gps.location.lng() )  ;
+               dtostrf(dmh,8,2,lon) ;
+               lon[8] = 'E';
+           }
+           
+
+           // position change
+           //  1 100th-second = 60 feet @ 38 lat
+           //  1 100th-second = 48 feet @  lon (fairly constant) 
+           // set a precision value to compare 
+           if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
+               strcpy(prevlat,lat) ;
+               position_changed = true ; 
+           }
+           if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
+               strcpy(prevlon,lon) ;
+               position_changed = true ; 
+           }
+       } // end lat lon update 
 
            // altitude 
-           if ( gps.altitude.isValid() ) {
-               alt = (int) gps.altitude.feet() ;
-           }
+       if ( gps.altitude.isValid() ) {
+           alt = (int) gps.altitude.feet() ;
+       } // end altitude update 
 
-       }
-   }
+    } // end gps check 
 
 
    // outer update check loop 
@@ -618,16 +650,19 @@ void loop()
        }
    }
 
+   // read (and output received packets
    processPacket() ;
 
+   // check the backlight
    // need the extra logic check, to avoid negative result errors with unsigned longs
    if ( ( bklighttimer < millis() ) 
            &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
        lcd.setBacklight(LOW) ; 
    }
 
+   // update the display 
    if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
-     lastupdatedisplay = millis() ;
+         lastupdatedisplay = millis() ;
          forcedisplay = false ;
 
          sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
@@ -645,6 +680,10 @@ void loop()
          }
 
          if ( DEBUG_APRS_SETTINGS) APRS_printSettings(serialdb) ;
+
+         // update gps led
+
+         digitalWrite(LED_GPS,gps.location.isValid()) ;
 
      } 
 

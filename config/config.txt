@@ -1,6 +1,6 @@
 # sample config file (copy to SD card in a file  "config.txt")  
 # text after "#" are considered comments and are ignored
-# also, no leading spaces allowed in parameter lines (lagging spaces are trimmed) 
+# parameter values are trimmed (leading and following spaces removed) 
 # 
 # required parameters:  Callsign(1), Callsign SSID (2)
 #
@@ -9,47 +9,49 @@
 # syntax of parameter line:
 # <parameter order number>,<parameter value>  # <optional comment>
 # 
+# note: all parameters marked with *** are not currently implemented. 
+#
 # Required Parameters 
-#
-1,NOCALL # CALLSIGN of Tracker
-2,2 # SSID of Tracker
-#
+ 
+1, NOCALL # CALLSIGN of Tracker
+2, 2      # SSID of Tracker
+ 
 # Optional Parameters 
-#  
-3,LART1 Track # COMMENT field sent out with APRS message (limited to 20 chars)
-#
+   
+3, LART1 Track # COMMENT field sent out with APRS message (limited to 20 chars)
+ 
 # APRS Mode switches
-#
-4,1 # APRS_BEACON mode (1=true (default) ,0=false) APRS beacon transmitter
-5,1 # APRS_RECV (1=true (default) , 0=false ) send APRS packet received on usb  output
-6,1 # NOTSOSMART_BEACON (1=true (default), 0 = (fixed interval mode)) uses NotSoSmart Beacon mode (adapative interval) 
-7,1 # SDLOG (0=false (default), 1=true) writes a log file for transmissions
-# 
+ 
+4, 1 # APRS_BEACON mode (1=true (default) ,0=false) APRS beacon transmitter
+5, 1 # APRS_RECV (1=true (default) , 0=false ) send APRS packet received on usb  output
+6, 1 # NOTSOSMART_BEACON (1=true (default), 0 = (fixed interval mode)) uses NotSoSmart Beacon mode (adapative interval) 
+7, 1 # *** SDLOG (0=false (default), 1=true) writes a log file for transmissions
+  
 # DRA818 Transceiver Settings
-#
-8,144.390  # TXFREQ
-9,144.390  # RXFREQ 
-10,0 # TXCTCSS 
-11,0 # RXCTCSS 
-12,5 # Reciver volume 1-8
-13,2 # Squelch (0-8) , 0=open squelch
-14,0 # OPEN_SQUELCH setting (0=false (default), 1=true), set to 1 if SQUELCH is 0
-# 
+ 
+8, 144.390  # TXFREQ
+9, 144.390  # RXFREQ 
+10, 0 # TXCTCSS 
+11, 0 # RXCTCSS 
+12, 5 # Reciver volume 1-8
+13, 2 # Squelch (0-8) , 0=open squelch
+14, 0 # *** OPEN_SQUELCH setting (0=false (default), 1=true), set to 1 if SQUELCH is 0
+ 
 # APRS modem settings
-#
-15,APZMDM # Destination Address (doesnt need to be changed)
-16,WIDE1  # set path 1 route
-17,1      # path 1 ssid
-18,WIDE2  # path 2 route
-19,2      # path 2 ssid
-20,350    # preamble length (ms) 
-21,50     # tail length (ms)
-22,n      # aprs symbol (see http://www.aprs.net/vm/DOS/SYMBOLS.HTM )
-23,0      # use alternative symbol table (0=false (default), 1=true) 
-#
+
+15,APZMDM # *** Destination Address (doesnt need to be changed)
+16,WIDE1  # *** set path 1 route
+17,1      # *** path 1 ssid
+18,WIDE2  # *** path 2 route
+19,2      # *** path 2 ssid
+20,350    # *** preamble length (ms) 
+21,50     # *** tail length (ms)
+22,n      # *** aprs symbol (see http://www.aprs.net/vm/DOS/SYMBOLS.HTM )
+23,0      # *** use alternative symbol table (0=false (default), 1=true) 
+ 
 # timing intervals
-#
-24,60000 # LCD Backlight ON interval (ms) default=60000 ms
-25,1200000 #  UPDATE_BEACON_FIXED (ms) default=1200000 ms , sets fixed update interval or stopped interval (NoSoSmart mode)
-26,60000 # UPDATE_BEACON_MOVING (ms) default = 60000 ms , sets interval when moving
-27,6 # POSTION_CHANGE_PRECISION (don't change, unless you know what you doing)
+ 
+24,60000   # *** LCD Backlight ON interval (ms) default=60000 ms
+25,1200000 # UPDATE_BEACON_FIXED (ms) default=1200000 ms , sets fixed update interval or stopped interval (NoSoSmart mode)
+26,60000   # UPDATE_BEACON_MOVING (ms) default = 60000 ms , sets interval when moving
+27,6       # *** POSTION_CHANGE_PRECISION (don't change, unless you know what you doing)
