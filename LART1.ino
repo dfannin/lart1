@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999m"
+#define VERSION "Beta-0.999n"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -370,22 +370,23 @@ void testleds(void) {
    pinMode(LED_GPS,OUTPUT) ;
 
    digitalWrite(LED_TX,HIGH) ;
-   digitalWrite(LED_RX,HIGH) ;
-   digitalWrite(LED_GPS,HIGH) ;
-   delay(750) ;
-   digitalWrite(LED_TX,LOW);
    digitalWrite(LED_RX,LOW);
-   digitalWrite(LED_GPS,LOW);
-   delay(750) ;
-   digitalWrite(LED_TX,HIGH) ;
+   digitalWrite(LED_GPS,LOW) ;
+   delay(800) ;
+   digitalWrite(LED_TX,LOW);
    digitalWrite(LED_RX,HIGH) ;
+   digitalWrite(LED_GPS,LOW);
+   delay(800) ;
+   digitalWrite(LED_TX,LOW) ;
+   digitalWrite(LED_RX,LOW) ;
    digitalWrite(LED_GPS,HIGH) ;
-   delay(750) ;
+   delay(800) ;
    digitalWrite(LED_TX,LOW) ;
    digitalWrite(LED_RX,LOW) ;
    digitalWrite(LED_GPS,LOW) ;
 
 } 
+
 
 
 void setup()
@@ -528,63 +529,54 @@ void setup()
 
 char  lat[] =  "0000.00N" ;
 char  lon[] = "00000.00W" ;
-int alt = 0 ;
-bool position_changed = false ;
-bool lastpositionsent = false ;
+double latd = 0.0 ;
+double lond = 0.0 ;
+
 char  prevlat[] =  "0000.00N" ;
 char  prevlon[] = "00000.00W" ;
+double prevlatd = 0.0 ;
+double prevlond = 0.0 ;
+
+int alt = 0 ;
+
+bool position_changed = false ;
+bool lastpositionsent = false ;
 
 
 
 void loop()
 {
 
-   // process the gps packets
-   while(serialgps->available() > 0 ) gps.encode(serialgps->read()) ;
-
-   // check location every 3 seconds
-
-   if ( (millis() - lastgpsupdate) > 3000 ) {
-
-       lastgpsupdate = millis() ;
-
+// process the gps packets
+while(serialgps->available() > 0 ) { 
+       
+   if ( gps.encode( serialgps->read() ) )  
 
        if( gps.location.isValid() ) {
           double dmh ; 
+           latd = gps.location.lat() ;
+           lond = gps.location.lng() ;
            // latitude
            if ( gps.location.rawLat().negative ) {
-               dmh = ddtodmh( -gps.location.lat() )  ;
+               dmh = ddtodmh( -latd )  ;
                dtostrf(dmh,7,2,lat) ;
                lat[7] = 'S';
            } else {
-               dmh = ddtodmh( gps.location.lat() )  ;
+               dmh = ddtodmh( latd )  ;
                dtostrf(dmh,7,2,lat) ;
                lat[7] = 'N';
            }
            // longitude
            if ( gps.location.rawLng().negative ) {
-               dmh = ddtodmh( -gps.location.lng() )  ;
+               dmh = ddtodmh( -lond )  ;
                dtostrf(dmh,8,2,lon) ;
                lon[8] = 'W';
            } else {
-               dmh = ddtodmh(gps.location.lng() )  ;
+               dmh = ddtodmh(lond )  ;
                dtostrf(dmh,8,2,lon) ;
                lon[8] = 'E';
            }
-           
 
-           // position change
-           //  1 100th-second = 60 feet @ 38 lat
-           //  1 100th-second = 48 feet @  lon (fairly constant) 
-           // set a precision value to compare 
-           if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
-               strcpy(prevlat,lat) ;
-               position_changed = true ; 
-           }
-           if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
-               strcpy(prevlon,lon) ;
-               position_changed = true ; 
-           }
        } // end lat lon update 
 
            // altitude 
@@ -592,7 +584,43 @@ void loop()
            alt = (int) gps.altitude.feet() ;
        } // end altitude update 
 
-    } // end gps check 
+} // end readgps 
+
+   // check if position has changed
+   if ( ( millis() - lastgpsupdate )   >   30000  ) { 
+           lastgpsupdate = millis() ;
+           // position change
+           //  1 100th-second = 60 feet @ 38 lat
+           //  1 100th-second = 48 feet @  lon (fairly constant) 
+           // for precision "6" , 13 miles per hour
+           /*
+           // calculate distance (in miles) 
+           double distM  = TinyGPSPlus.distanceBetween(latd,lond, prevlatd, prevlond) * 0.6214 ; 
+
+           // convert to MPH
+           double mph = ( distM / 15 ) * 3600 ;  
+
+           if ( mph > 8.0 ) {
+
+           }
+           */
+           
+
+           if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
+               strcpy(prevlat,lat) ;
+               prevlatd = latd ;
+               position_changed = true ; 
+           } 
+
+
+           if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
+               strcpy(prevlon,lon) ;
+               prevlond = lond ;
+               position_changed = true ; 
+           }
+   }
+
+
 
 
    // outer update check loop 
