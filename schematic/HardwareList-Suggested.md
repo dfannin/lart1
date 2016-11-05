@@ -14,8 +14,8 @@ What you'll need for the LART/1 Tracker (a/o 2016)
     + There are two types of modules ( the "v" and the "u",for vhf and uhf, respectively) - make sure you get the "v" version.
     + Search for "DRA818v module" - you should be able to get them for $11 with shipping. 
     + They are also packaged on a board with audio circuitry and Low Pass Filter (also more expensive).  They may work, but you'll need to figure out how.
-+ SD card module for Arduino
-    + provides the SD card interface for reading the configuration.  
++ Micro SD card module for Arduino
+    + provides the Micro SD card interface for reading the configuration.  
     + Search Ebay for "arduino SD card module"  About $0.74 , shipped.
 + LCD Display (this is optional)
     + provide character output on a 16x2 display.  Not really needed, but nice. They also use 20 to 80mW of power (with the backlight on).
