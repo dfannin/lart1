@@ -35,9 +35,13 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999n"
+#define VERSION "Beta-0.999o"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
+
+//  define APRS_PTT_LOW for TX=LOW hardware
+//  or APRS_PTT_HIGH for TX=HIGH hardware
+#define APRS_PTT_TX_LOW 
 
 // status led 
 //
@@ -391,9 +395,13 @@ void testleds(void) {
 
 void setup()
 {
+   // initializes the PTT to high or low
+   // set to HIGH, if PTT is LOW to TX
+   // set to LOW   if PTT is HIGH to TX
+   pinMode(PTT,OUTPUT) ;
+   digitalWrite(PTT, HIGH ) ;
 
    strcpy(aprs_comment,APRS_COMMENT) ;
-
 
    testleds() ;
 
@@ -496,7 +504,7 @@ void setup()
 
    delay(500UL);
 
-   dra.setPTT(LOW);
+   dra.setPTT(PTT_OFF);
    delay(500UL);
 
    mylog.send(F("APRS setup")) ;

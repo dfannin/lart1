@@ -25,6 +25,9 @@
 #define DRA818_h
 
 #define DRA818_BUFSIZE 60
+
+#define PTT_ON  true
+#define PTT_OFF  false
 #include "Arduino.h"
 #include <stdio.h>
 #include <Stream.h>
@@ -32,7 +35,7 @@
 class DRA818 {
     public:
         // Constructors
-        DRA818(Stream *serial, uint8_t PTT);
+        DRA818(Stream *serial, uint8_t PTT, bool ptt_logic=LOW);
 
         void setFreq(float tx_freq, float rx_freq=0);
         void setTXCTCSS(uint8_t ctcss);
@@ -48,6 +51,8 @@ class DRA818 {
         bool heartbeat();
 
         uint8_t PTT_PIN;
+        bool ptt_on;
+        bool ptt_off;
         uint8_t tx_ctcss;
         uint8_t rx_ctcss;
         float tx_freq;
@@ -60,6 +65,7 @@ class DRA818 {
         uint8_t bw;
         char response[DRA818_BUFSIZE];
         char buffer[DRA818_BUFSIZE];
+
 
     private:
         Stream *serial;

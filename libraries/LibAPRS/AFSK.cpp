@@ -462,9 +462,26 @@ ISR(ADC_vect) {
     TIFR1 = _BV(ICF1);
     AFSK_adc_isr(AFSK_modem, ((int16_t)((ADC) >> 2) - 128));
     if (hw_afsk_dac_isr) {
+        //  set the 4 dac ports to return value of AFSK_dac_isr, and PTT to on
+        //  " | _BV(3) "(sets bit value 3 to 1.  " sets the PTT port to on
+        //  for reverse logic,  set the 3 bit to off
+
+#if  defined(  APRS_PTT_TX_HIGH ) 
         DAC_PORT = (AFSK_dac_isr(AFSK_modem) & 0xF0) | _BV(3); 
+#elif defined( APRS_PTT_TX_LOW ) 
+        DAC_PORT = (AFSK_dac_isr(AFSK_modem) & 0xF0) & ~_BV(3); 
+#endif 
+
     } else {
-        DAC_PORT = 128;
+        // sets the dac port to 0x80 (1000 0000) 
+        // sets bit 7 high, 4-6 to low, and ptt (3) to low. 
+        // for low logic, set DAC to 136 0x88 to set p7 and p3 to on, reset to off. 
+        // DAC_PORT = 0x88 for ptt high when not transmitting
+#if defined(  APRS_PTT_TX_HIGH ) 
+        DAC_PORT = 0x80;
+#elif defined ( APRS_PTT_TX_LOW ) 
+        DAC_PORT = 0x88 ;
+#endif 
     }
 
     poll_timer++;

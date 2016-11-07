@@ -17,33 +17,34 @@
     see <http://www.gnu.org/licenses/>.
 */
 
-/*
-modified by dfannin 2016
-added rx frequency set function
-added bandwidth function
-added heartbeak function
-added readResponse function
-
-*/
 #include "DRA818.h"
 
 
-DRA818::DRA818(Stream *serial, uint8_t PTT){
+DRA818::DRA818(Stream *serial, uint8_t PTT, bool ptt_logic){
     this->serial = serial;
     this->PTT_PIN = PTT;
     pinMode(this->PTT_PIN, OUTPUT);
-    this->setPTT(LOW);
     this->tx_ctcss = 0;
     this->rx_ctcss = 0;
     this->tx_freq =  146.500;
     this->rx_freq = this->tx_freq;
     this->bw = 0 ; // 0 = 12.5khz, 1 = 25khz
-
     this->volume = 4;
     this->squelch = 0;
     this->preemph = 0;
     this->highpass = 0;
     this->lowpass = 0;
+
+    // set PTT to either 
+    if ( ptt_logic ) {
+        this->ptt_on=HIGH ;
+        this->ptt_off=LOW ;
+    }else {
+        this->ptt_on=LOW ;
+        this->ptt_off=HIGH ;
+    }
+
+    this->setPTT(PTT_OFF);
 }
 
 
@@ -78,7 +79,7 @@ void DRA818::setSquelch(uint8_t sql){
 }
 
 bool DRA818::writeFreq(void){
-    digitalWrite(this->PTT_PIN, LOW);// Set PTT off, so we can communicate with the uC.
+    this->setPTT(PTT_OFF) ;
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
     char freq_buffer[10];
@@ -100,7 +101,7 @@ bool DRA818::setVolume(uint8_t vol){
         this->volume = vol;
     }
 
-    digitalWrite(this->PTT_PIN, LOW); // Set PTT off, so we can communicate with the uC.
+    this->setPTT(PTT_OFF) ;
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
     this->clearinput() ;
@@ -117,7 +118,7 @@ bool DRA818::setFilters(boolean preemph, boolean highpass, boolean lowpass){
     this->highpass=highpass?0:1;
     this->lowpass=lowpass?0:1;
 
-    digitalWrite(this->PTT_PIN, LOW); // Set PTT off, so we can communicate with the uC.
+    this->setPTT(PTT_OFF) ;
     delay(250); // Delay for a bit, to let the uC boot up (??)
 
     this->clearinput() ;
@@ -137,9 +138,9 @@ void DRA818::setBW(uint8_t bw) {
 
 void DRA818::setPTT(bool ptt) {
     if ( ptt ) {
-        digitalWrite(this->PTT_PIN, HIGH);
+        digitalWrite(this->PTT_PIN, this->ptt_on);
     } else {
-        digitalWrite(this->PTT_PIN, LOW);
+        digitalWrite(this->PTT_PIN, this->ptt_off);
     }
 }
 
@@ -175,7 +176,7 @@ void DRA818::readResponse() {
 }
 
 bool DRA818::heartbeat() {
-    digitalWrite(this->PTT_PIN, LOW); 
+    this->setPTT(PTT_OFF) ;
     delay(250); 
 
     this->clearinput() ;

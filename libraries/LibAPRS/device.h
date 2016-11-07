@@ -31,6 +31,7 @@
     #define LED_DDR  DDRB
     #define ADC_PORT PORTC
     #define ADC_DDR  DDRC
+    #define APRS_PTT_TX_LOW
 #endif
 
 #if TARGET_CPU == mega2560
@@ -40,6 +41,7 @@
     #define LED_DDR  DDRL
     #define ADC_PORT PORTF
     #define ADC_DDR  DDRF
+    #define APRS_PTT_TX_LOW
 #endif
 
 #endif
