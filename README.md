@@ -2,7 +2,7 @@
 
 Arduino Software for an APRS Tracker 
 
-![LART1](schematic/LART1v6-3d-brd-top.png =400x)
+![LART1](schematic/LART1v6-3d-brd-top.png)
 
 a.k.a Livermore Amateur Radio Club APRS Tracker (LART/1) 
 # Introduction
