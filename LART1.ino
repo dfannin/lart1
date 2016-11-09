@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999o"
+#define VERSION "Beta-0.999p"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -52,6 +52,9 @@
 // Transceiver Ctl pins
 // PTT pin (don't change, the pin is used by Port Manipulation later on) 
 #define PTT 25
+
+// PowerDown Logic Pin (puts DRA818 into sleep mode)
+#define PD 35 
 
 // usb serial port
 HardwareSerial  * serialdb   = &Serial ;
@@ -368,6 +371,8 @@ bool readConfig(File *cf) {
 }
 
 
+// blinks the LEDs on startup
+//
 void testleds(void) {
    pinMode(LED_TX,OUTPUT) ;
    pinMode(LED_RX,OUTPUT) ;
@@ -376,19 +381,14 @@ void testleds(void) {
    digitalWrite(LED_TX,HIGH) ;
    digitalWrite(LED_RX,LOW);
    digitalWrite(LED_GPS,LOW) ;
-   delay(800) ;
+   delay(1000) ;
    digitalWrite(LED_TX,LOW);
    digitalWrite(LED_RX,HIGH) ;
-   digitalWrite(LED_GPS,LOW);
-   delay(800) ;
-   digitalWrite(LED_TX,LOW) ;
+   delay(1000) ;
    digitalWrite(LED_RX,LOW) ;
    digitalWrite(LED_GPS,HIGH) ;
-   delay(800) ;
-   digitalWrite(LED_TX,LOW) ;
-   digitalWrite(LED_RX,LOW) ;
+   delay(1000) ;
    digitalWrite(LED_GPS,LOW) ;
-
 } 
 
 
@@ -398,8 +398,12 @@ void setup()
    // initializes the PTT to high or low
    // set to HIGH, if PTT is LOW to TX
    // set to LOW   if PTT is HIGH to TX
-   pinMode(PTT,OUTPUT) ;
+   pinMode(PTT, OUTPUT) ;
    digitalWrite(PTT, HIGH ) ;
+   // initializes PD pin to HiGH for DRA818
+   // keeps the DRA818 active
+   pinMode(PD, OUTPUT) ;
+   digitalWrite(PD, HIGH) ;
 
    strcpy(aprs_comment,APRS_COMMENT) ;
 
@@ -521,11 +525,18 @@ void setup()
 
    sprintf(buf,"Receive Mode %d",aprs_recv) ;
    mylog.send(buf) ;
-   delay(500UL) ;
 
    sprintf(buf,"Beacon Mode %d",aprs_beacon) ;
    mylog.send(buf) ;
+   delay(500UL) ;
+
    sprintf(buf,"NotSmart Mode %d",notsosmart_beacon) ;
+   mylog.send(buf) ;
+#ifdef APRS_PTT_TX_LOW 
+   sprintf(buf,"PTT Logic LOW") ;
+#else
+   sprintf(buf,"PTT Logic HIGH") ;
+#endif 
    mylog.send(buf) ;
    delay(500UL) ;
 

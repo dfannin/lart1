@@ -29,3 +29,5 @@ What you'll need for the LART/1 Tracker (a/o 2016)
     + You'll need an Arduino IDE programming environment 
     + Software (free) is available here: https://www.arduino.cc/en/Main/Software
     + works on windows/mac/linux
++ Mini-Circuits LCFN-160+ SMD Low Pass Filter
+    + Order from Mini-Circuits http://minicircuits.com (around $3) 
