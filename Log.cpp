@@ -4,36 +4,59 @@
 
 Log::Log(void){} 
 
-void Log::Log_Init(Stream *serial, LiquidCrystal_I2C *lcd){
+void Log::Log_Init(Stream *serial, LiquidCrystal_I2C *lcd, int lcdcol, int lcdrow){
     this->serial = serial ;
+    for( int i ; i < 3 ; i++ ) { 
+        strcpy(this->line[i],"") ;
+    }
     this->lcd = lcd ;
-    strcpy(this->line1,"") ;
+    this->lcdcol = lcdcol ;
+    this->lcdrow = lcdrow ;
+    this->lcd->begin(lcdcol,lcdrow) ;
+} 
+
+void Log::Log_Init(Stream *serial){
+    this->serial = serial ;
+
+    for( int i = 0  ; i < 3 ; i++ ) { 
+        strcpy(this->line[i],"") ;
+    }
+
+    this->lcd = NULL ;
+    this->lcdcol = 0 ;
+    this->lcdrow = 0 ;
 } 
 
 void Log::send(const char *msg) {
 
     this->serial->println(msg) ;
 
-    this->lcd->clear() ;
+    if ( this->lcd != NULL) { 
 
-    char lcdmsg[LCDCOL+1];
-    strncpy(lcdmsg,msg,LCDCOL+1) ;
-    lcdmsg[LCDCOL] = '\0' ; 
+        this->lcd->clear() ;
 
-    if ( strlen(this->line1) == 0 )  {
-        this->lcd->print(lcdmsg) ;
-    } else { 
-        this->lcd->print(this->line1) ;
-        this->lcd->setCursor(0,1) ; 
-        this->lcd->print(lcdmsg) ;
+        // shift all lines up one.
+        for( int i = 1 ; i < this->lcdrow  ; i++ ) { 
+              strcpy(this->line[i-1],this->line[i]) ;
+        }
+
+        // copy the new line into the bottom (make sure overflow is handled) 
+        strncpy(this->line[this->lcdrow-1], msg, this->lcdcol) ;
+        this->line[lcdrow-1][this->lcdcol] = '\0' ; 
+
+        // write all the lines to the lcd
+        for( int i = 0 ; i < this->lcdrow  ; i++ ) { 
+            this->lcd->setCursor(0,i) ; 
+            this->lcd->print(this->line[i]) ;
+        }
+
     }
-
-    strcpy(this->line1,lcdmsg) ;
 
 }
 
+
 void Log::send(const __FlashStringHelper * ifsh) {
-    char outbuf[100] ;
+    char outbuf[140] ;
     const char PROGMEM *p = (const char PROGMEM *) ifsh ;
     size_t i = 0 ;
     while(1) {

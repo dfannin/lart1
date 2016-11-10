@@ -51,7 +51,7 @@
  
 # timing intervals
  
-24,60000   # *** LCD Backlight ON interval (ms) default=60000 ms
+24,60000   # *** LCD Backlight ON interval (ms) default=60000 ms (noop if OPTION_LCD is false)
 25,1200000 # UPDATE_BEACON_FIXED (ms) default=1200000 ms , sets fixed update interval or stopped interval (NoSoSmart mode)
 26,60000   # UPDATE_BEACON_MOVING (ms) default = 60000 ms , sets interval when moving
 27,6       # *** POSTION_CHANGE_PRECISION (don't change, unless you know what you doing)

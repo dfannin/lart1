@@ -73,10 +73,7 @@
 
 #define USE_ALT_SYM_TABLE false 
 
-//
-// has an LCD
-#define OPTION_LCD  true
-// backlight interval in seconds
+// lcd backlight interval in seconds
 #define BKLIGHT_INTERVAL 60000L
 
 // beaconing timing 
@@ -115,5 +112,10 @@
 // 7 = DD MM SS (approx 61 ft of changes for  lat, and 48 ft for lon @ 38 lat) 
 //               warning:  will result in freq updates due to gps noise variation )
 #define POSITION_CHANGE_PRECISION 6
+
+// LCD row and column settings
+#define OPTION_LCD  true
+#define LCDCOL 16
+#define LCDROW 2
 
 #endif

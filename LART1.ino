@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999p"
+#define VERSION "Beta-0.999q"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -95,9 +95,10 @@ bool gpsfix = false ;
 
 int sent_count=0 ;
 
+#if OPTION_LCD
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
-
 unsigned long bklighttimer = 30000UL ;
+#endif
 
 
 // GPS 
@@ -110,8 +111,7 @@ DRA818 dra(dra_serial, PTT);
 Log mylog;
 
 
-
-char buf[100] ;
+char buf[120] ;
 
 boolean gotPacket = false ;
 int recv_count = 0 ;
@@ -138,7 +138,7 @@ void processPacket()
 {
    if(gotPacket) {
       char outbuf[180] ; 
-      char tmpbuf[100];
+      char tmpbuf[120];
 
       gotPacket = false ;
       recv_count++ ;
@@ -419,9 +419,13 @@ void setup()
        exit(0) ;
    }
 
-   lcd.begin(16,2);
-
-   mylog.Log_Init(serialdb, &lcd) ;
+#if OPTION_LCD
+   mylog.Log_Init(serialdb, &lcd, LCDCOL, LCDROW) ;
+   mylog.send(F("LCD Init")) ;
+#else
+   mylog.Log_Init(serialdb) ;
+   mylog.send(F("No LCD")) ;
+#endif
 
    mylog.send(F("LART/1 APRS TRAK")) ;
 
@@ -700,12 +704,14 @@ while(serialgps->available() > 0 ) {
    // read (and output received packets
    processPacket() ;
 
+#if OPTION_LCD
    // check the backlight
    // need the extra logic check, to avoid negative result errors with unsigned longs
    if ( ( bklighttimer < millis() ) 
            &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
        lcd.setBacklight(LOW) ; 
    }
+#endif
 
    // update the display 
    if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
