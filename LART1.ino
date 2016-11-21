@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "SD.h"
 
-#define VERSION "Beta-0.999q"
+#define VERSION "Beta-0.999r"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -45,8 +45,8 @@
 
 // status led 
 //
-#define LED_TX 48
-#define LED_RX 47
+#define LED_TX 49
+#define LED_RX 46
 #define LED_GPS 36
 //
 // Transceiver Ctl pins
@@ -379,6 +379,10 @@ void testleds(void) {
    pinMode(LED_GPS,OUTPUT) ;
 
    digitalWrite(LED_TX,HIGH) ;
+   digitalWrite(LED_RX,HIGH);
+   digitalWrite(LED_GPS,HIGH) ;
+   delay(1000) ;
+   digitalWrite(LED_TX,HIGH) ;
    digitalWrite(LED_RX,LOW);
    digitalWrite(LED_GPS,LOW) ;
    delay(1000) ;
@@ -407,17 +411,15 @@ void setup()
 
    strcpy(aprs_comment,APRS_COMMENT) ;
 
+   serialdb->begin(USB_PORT_BAUD) ;
+
+   serialdb->println(F("start")) ;
+
    testleds() ;
 
    dra_serial->begin(DRA818_PORT_BAUD) ;
    serialgps->begin(GPS_PORT_BAUD) ;
-   serialdb->begin(USB_PORT_BAUD) ;
 
-   if ( !SD.begin(4) ) {
-       mylog.send(F("sd init fail")) ; 
-       delay(1000) ;
-       exit(0) ;
-   }
 
 #if OPTION_LCD
    mylog.Log_Init(serialdb, &lcd, LCDCOL, LCDROW) ;
@@ -428,6 +430,13 @@ void setup()
 #endif
 
    mylog.send(F("LART/1 APRS TRAK")) ;
+
+   if ( !SD.begin(4) ) {
+       serialdb->println(F("sd init fail")) ; 
+       delay(1000) ;
+       exit(0) ;
+   }
+
 
    const char *fname = "/config.txt" ;
 
