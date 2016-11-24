@@ -34,8 +34,9 @@
 #include "DRA818.h"
 #include "Log.h"
 #include "SD.h"
+#include "ClickButton.h"
 
-#define VERSION "Beta-0.999r"
+#define VERSION "Beta-0.999s"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -55,6 +56,13 @@
 
 // PowerDown Logic Pin (puts DRA818 into sleep mode)
 #define PD 35 
+
+// on-board tactile button (UI button)
+// use pullup , so button is active low 
+#define BTN1 41
+ClickButton btn1(BTN1, LOW, CLICKBTN_PULLUP) ;
+int btn1_function = 0 ;
+
 
 // usb serial port
 HardwareSerial  * serialdb   = &Serial ;
@@ -99,6 +107,7 @@ int sent_count=0 ;
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7 , 3, POSITIVE); 
 unsigned long bklighttimer = 30000UL ;
 #endif
+bool bklightstate = true ;
 
 
 // GPS 
@@ -396,6 +405,29 @@ void testleds(void) {
 } 
 
 
+#if OPTION_LCD
+bool backlight(bool newlcdstate) {
+static  bool lcdstate =  false ; 
+
+if ( newlcdstate  != lcdstate) {
+    if ( ! lcdstate )  bklighttimer = millis() ;
+    lcdstate = newlcdstate ; 
+    lcd.setBacklight(lcdstate) ; 
+} else {
+    if ( lcdstate && 
+         ( bklighttimer < millis() ) &&  
+         ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
+        lcdstate = false;
+        lcd.setBacklight(lcdstate) ; 
+    }
+}
+
+return lcdstate ;
+}
+#endif
+
+
+
 
 void setup()
 {
@@ -553,6 +585,9 @@ void setup()
    mylog.send(buf) ;
    delay(500UL) ;
 
+   btn1.debounceTime = 50 ;
+   btn1.multiclickTime = 500 ;
+
    mylog.send(F("Setup Complete")) ;
    delay(500UL) ;
    mylog.send(F("Ready")) ;
@@ -578,6 +613,8 @@ bool lastpositionsent = false ;
 
 void loop()
 {
+
+
 
 // process the gps packets
 while(serialgps->available() > 0 ) { 
@@ -713,13 +750,19 @@ while(serialgps->available() > 0 ) {
    // read (and output received packets
    processPacket() ;
 
+
+// update button state
+    btn1.Update() ;
+
+    if (btn1.clicks != 0 ) btn1_function = btn1.clicks ; 
+
+    // single click = reset the backlight timer
+    if (btn1.clicks == 1 ) {
+        bklightstate = !bklightstate ; 
+    }
+
 #if OPTION_LCD
-   // check the backlight
-   // need the extra logic check, to avoid negative result errors with unsigned longs
-   if ( ( bklighttimer < millis() ) 
-           &&  ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
-       lcd.setBacklight(LOW) ; 
-   }
+    bklightstate = backlight(bklightstate) ;
 #endif
 
    // update the display 
