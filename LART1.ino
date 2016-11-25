@@ -37,7 +37,7 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "Beta-0.999t"
+#define VERSION "Beta-0.999u"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -471,6 +471,9 @@ void testleds(void) {
 
 // halt command
 void myabort() {
+#if OPTION_LCD
+    lcd.setBacklight(LOW) ; 
+#endif
     cli() ;
     sleep_enable() ;
     sleep_cpu() ;
@@ -540,7 +543,7 @@ void setup()
    mylog.send(F("LART/1 APRS TRAK")) ;
 
    if ( !SD.begin(4) ) {
-       serialdb->println(F("sd init fail")) ; 
+       mylog.send(F("sd init fail")) ; 
        delay(10000) ;
        myabort() ;
    }
@@ -601,28 +604,38 @@ void setup()
    char fbuf[12] ;
    if ( dra.writeFreq() ) {
        dtostrf(txfreq, 8, 4, fbuf) ;
-       sprintf(buf,"Freq TX:%s",fbuf) ;
+       sprintf(buf,"TX:%s",fbuf) ;
        mylog.send(buf);
+       sprintf(buf,"TXpl:%d",txctcss) ;
+       mylog.send(buf);
+       delay(1000UL);
        dtostrf(rxfreq, 8, 4, fbuf) ;
-       sprintf(buf,"Freq RX:%s",fbuf) ;
+       sprintf(buf,"RX:%s",fbuf) ;
        mylog.send(buf);
+       sprintf(buf,"RXpl:%d",rxctcss) ;
+       delay(1000UL);
     } else {
         mylog.send(F("Freq Fail"));
        delay(10000) ;
        myabort() ;
     }
-   delay(1000UL);
 
    if ( dra.setVolume(volume) ) {
        sprintf(buf,"Vol: %d", volume) ;
        mylog.send(buf);
+       delay(500UL);
+       sprintf(buf,"Sql: %d", squelch) ;
+       mylog.send(buf);
+       sprintf(buf,"OpenSql: %d", open_squelch) ;
+       mylog.send(buf);
+       delay(500UL);
+
     } else {
         mylog.send(F("Vol Fail"));
        delay(10000);
        myabort();
     } 
 
-   delay(500UL);
 
    if ( dra.setFilters(FILTER_PREMPHASIS, FILTER_HIGHPASS, FILTER_LOWPASS) ) {
       sprintf(buf,"Filter: %d %d %d",FILTER_PREMPHASIS,FILTER_HIGHPASS,FILTER_LOWPASS) ;
