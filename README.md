@@ -12,7 +12,6 @@ Unlike commerical units, this tracker was designed for low cost and easy of use.
 # Features
 + Reads configuration from SD card (and can writes log file)
 + Send APRS position reports (fields sent: lat/lon/altitude/comments)
-    + A PHGD (Power, Height, Gain and Directivity) option available
 + Adaptive Interval Beacon Mode (NotSoSmart_Beacon mode) 
     + adjusts update intervals based on degree of position change (includes change precision setting) 
 + Adjustable Update Intervals 
@@ -31,7 +30,8 @@ LART1 requires/assumes the following hardware:
 + APRS circuit based on the MicroModem Circuit. A schematic is provided.  
 + GPS that provides NMEA output.  The Ublox Neo-6m GPS, used for flight controllers, are a good choice. 
 + 2 meter transceiver module (recommend a DRA818vhf or SA818vhf) 
-+ Arduino SD Card Module (for setting configuration data, and writing a log)
++ Arduino miniSD Card Module (for setting configuration data, and writing a log)
++ LCD (16x2 or 20x4) i2c 
 
 # Dependencies
 requires the following libraries to be installed in your Arduino Sketchbook `libraries/` directory. 
