@@ -27,6 +27,7 @@
 #endif
 
 #include "Arduino.h" 
+#include <avr/sleep.h>
 #include "LART1_Settings.h"
 #include "LiquidCrystal_I2C.h"
 #include "LibAPRS.h"
@@ -36,9 +37,17 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "Beta-0.999s"
+#define VERSION "Beta-0.999t"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
+
+// setting DRA818 Filter settings
+// transciver filter settings 
+// note: "true" bypasses the  filter (turns the filter off), "false"  sets to normal mode (turns on) 
+// yes, this is confusing!
+#define FILTER_PREMPHASIS false
+#define FILTER_HIGHPASS true
+#define FILTER_LOWPASS true
 
 //  define APRS_PTT_LOW for TX=LOW hardware
 //  or APRS_PTT_HIGH for TX=HIGH hardware
@@ -63,7 +72,6 @@
 ClickButton btn1(BTN1, LOW, CLICKBTN_PULLUP) ;
 int btn1_function = 0 ;
 
-
 // usb serial port
 HardwareSerial  * serialdb   = &Serial ;
 // gps port
@@ -72,9 +80,11 @@ HardwareSerial  * serialgps  = &Serial1 ;
 HardwareSerial * dra_serial = &Serial2 ;
 
 // setting the default parameters
-char aprs_callsign[10] ;
+char aprs_callsign[7] ;
+bool callsign_set = false ;
 int  aprs_ssid ;
-char aprs_comment[40] ;
+bool ssid_set = false ;
+char aprs_comment[36] ;
 bool aprs_beacon = APRS_BEACON  ;
 bool aprs_recv = APRS_RECV ;
 bool notsosmart_beacon = NOTSOSMART_BEACON ; 
@@ -85,6 +95,18 @@ int txctcss = TXCTCSS ;
 int rxctcss = RXCTCSS ;
 int volume = VOL ;
 int squelch = SQUELCH ;
+
+bool open_squelch = OPEN_SQUELCH ;
+char aprs_dest[7]  ;
+char aprs_path1[7] ;
+int aprs_path1_ssid =PATH1_SSID ;
+char aprs_path2[7] ;
+int aprs_path2_ssid = PATH2_SSID ;
+int  preamble = PREAMBLE;
+int  tail = TAIL;
+char aprs_symbol  = SYMBOL ;
+bool aprs_alt_symbol = USE_ALT_SYM_TABLE  ;
+unsigned long bklight_interval = BKLIGHT_INTERVAL ;
 
 unsigned long update_beacon = UPDATE_BEACON_INIT ;
 
@@ -99,7 +121,6 @@ unsigned long lastupdatedisplay = 0 ;
 unsigned long lastgpsupdate = 0 ;
 bool forcedisplay = false ;
 
-bool gpsfix = false ;
 
 int sent_count=0 ;
 
@@ -153,13 +174,13 @@ void processPacket()
       recv_count++ ;
 
       outbuf[0] = '\0';
-      strcpy(tmpbuf,"0000-00-00 00:00:00 ") ;
+      strcpy(tmpbuf,"00-00 00:00:00 ") ;
 
       if ( aprs_recv ) {
 
           if( gps.date.isValid() ) {
-              sprintf(tmpbuf,"%4d-%02d-%02d %02d:%02d:%02d ", 
-                      gps.date.year(), gps.date.month(), gps.date.day(),
+              sprintf(tmpbuf,"%02d-%02d %02d:%02d:%02d ", 
+                      gps.date.month(), gps.date.day(),
                       gps.time.hour(), gps.time.minute(), gps.time.second()
                      ) ;
           } 
@@ -243,13 +264,17 @@ void setParam(int p, const char *buf) {
 
     switch(p) {
         case 1:
-            strcpy(aprs_callsign,buf);
+            strncpy( aprs_callsign, buf, 6 );
+            aprs_callsign[ 6] ='\0';
+            if (strlen(aprs_callsign) > 2) callsign_set = true ;
             break ;
         case 2:
             aprs_ssid = atoi(buf);
+            if ( aprs_ssid >= 0 && aprs_ssid < 16 ) ssid_set = true ;
             break ;
         case 3:
-            strcpy(aprs_comment,buf);
+            strncpy( aprs_comment, buf, 35);
+            aprs_comment[35]='\0' ;
             break ;
         case 4:
             aprs_beacon =(bool)  atoi(buf) ;
@@ -271,23 +296,63 @@ void setParam(int p, const char *buf) {
             break ;
         case 10:
             txctcss =  atoi(buf) ;
+            if ( txctcss < 0 || txctcss > 38 ) txctcss = 0 ;
             break ;
         case 11:
             rxctcss =  atoi(buf) ;
+            if ( rxctcss < 0 || rxctcss > 38 ) rxctcss = 0 ;
             break ;
         case 12:
             volume =  atoi(buf) ;
+            if ( volume < 1 || volume > 8 ) volume = 5 ; 
             break ;
         case 13:
             squelch =  atoi(buf) ;
+            if ( squelch < 0 || squelch > 8 ) squelch = 2 ; 
+            break ;
+        case 14:
+            open_squelch = (bool) atoi(buf) ;
+            break ;
+        case 15:
+            strncpy( aprs_dest, buf, 6 );
+            aprs_dest[6] ='\0';
+            break ;
+        case 16:
+            strncpy( aprs_path1, buf, 6 );
+            aprs_path1[6] ='\0';
+            break ;
+        case 17:
+            aprs_path1_ssid =  atoi(buf) ;
+            if ( aprs_path1_ssid < 0 ||  aprs_path1_ssid > 15 ) aprs_path1_ssid = 1 ;
+            break ;
+        case 18:
+            strncpy( aprs_path2, buf, 6 );
+            aprs_path2[6] ='\0';
+            break ;
+        case 19:
+            aprs_path2_ssid =  atoi(buf) ;
+            if ( aprs_path2_ssid < 0 ||  aprs_path2_ssid > 15 ) aprs_path2_ssid = 1 ;
+            break ;
+        case 20:
+            preamble =  atol(buf) ;
+            break ;
+        case 21:
+            tail =  atol(buf) ;
+            break ;
+        case 22:
+            aprs_symbol = buf[0] ;
+            break ;
+        case 23:
+            aprs_alt_symbol = (bool) atoi(buf) ;
+            break ;
+        case 24:
+            bklight_interval =  atol(buf) ;
             break ;
         case 25:
             update_beacon_fixed =  atol(buf) ;
             break ;
         case 26:
             update_beacon_moving =  atol(buf) ;
-            break ;
-        case 0: 
             break ;
         default:
             break ;
@@ -404,6 +469,13 @@ void testleds(void) {
    digitalWrite(LED_GPS,LOW) ;
 } 
 
+// halt command
+void myabort() {
+    cli() ;
+    sleep_enable() ;
+    sleep_cpu() ;
+}
+
 
 #if OPTION_LCD
 bool backlight(bool newlcdstate) {
@@ -416,7 +488,7 @@ if ( newlcdstate  != lcdstate) {
 } else {
     if ( lcdstate && 
          ( bklighttimer < millis() ) &&  
-         ( millis() - bklighttimer)  > BKLIGHT_INTERVAL ) { 
+         ( millis() - bklighttimer)  > bklight_interval ) { 
         lcdstate = false;
         lcd.setBacklight(lcdstate) ; 
     }
@@ -441,11 +513,15 @@ void setup()
    pinMode(PD, OUTPUT) ;
    digitalWrite(PD, HIGH) ;
 
+   // initialize string variables 
    strcpy(aprs_comment,APRS_COMMENT) ;
+   strcpy(aprs_dest,APRS_DEST) ;
+   strcpy(aprs_path1,PATH1) ;
+   strcpy(aprs_path2,PATH2) ;
 
    serialdb->begin(USB_PORT_BAUD) ;
 
-   serialdb->println(F("start")) ;
+   serialdb->println(F("Start.")) ;
 
    testleds() ;
 
@@ -465,8 +541,8 @@ void setup()
 
    if ( !SD.begin(4) ) {
        serialdb->println(F("sd init fail")) ; 
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
    }
 
 
@@ -476,14 +552,20 @@ void setup()
 
    if (! configFile) {
        mylog.send(F("no cfg file")) ; 
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
    }
 
    if (!readConfig(&configFile) )  {
        mylog.send(F("cfg read fail")) ; 
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
+   }
+
+   if ( ! callsign_set || ! ssid_set ) {
+       mylog.send(F("call error")) ; 
+       delay(10000) ;
+       myabort() ;
    }
 
    mylog.send(F("cfg ok")) ; 
@@ -504,8 +586,8 @@ void setup()
        mylog.send(F("Txcr OK Chk")) ;
    } else {
        mylog.send(F("Txcr Fail Chk")) ;
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
    } 
    delay(500UL);
 
@@ -526,8 +608,8 @@ void setup()
        mylog.send(buf);
     } else {
         mylog.send(F("Freq Fail"));
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
     }
    delay(1000UL);
 
@@ -536,8 +618,8 @@ void setup()
        mylog.send(buf);
     } else {
         mylog.send(F("Vol Fail"));
-       delay(1000) ;
-       exit(0) ;
+       delay(10000);
+       myabort();
     } 
 
    delay(500UL);
@@ -547,8 +629,8 @@ void setup()
       mylog.send(buf);
    } else { 
       mylog.send( F("Filter Fail") );
-       delay(1000) ;
-       exit(0) ;
+       delay(10000) ;
+       myabort() ;
    }
 
    delay(500UL);
@@ -557,14 +639,15 @@ void setup()
    delay(500UL);
 
    mylog.send(F("APRS setup")) ;
-   APRS_init(ADC_REFERENCE, OPEN_SQUELCH);
+   APRS_init(ADC_REFERENCE, open_squelch);
    APRS_setCallsign(aprs_callsign, aprs_ssid);
-   APRS_setDestination(APRS_DEST,0);
-   APRS_setPath1(PATH1,PATH1_SSID);
-   APRS_setPath2(PATH2,PATH2_SSID);
-   APRS_setPreamble(PREAMBLE);
-   APRS_setTail(TAIL);
-   APRS_setSymbol(SYMBOL);
+   APRS_setDestination(aprs_dest,0);
+   APRS_setPath1(aprs_path1,aprs_path1_ssid);
+   APRS_setPath2(aprs_path2,aprs_path2_ssid);
+   APRS_setPreamble(preamble);
+   APRS_setTail(tail);
+   APRS_useAlternateSymbolTable(aprs_alt_symbol) ;
+   APRS_setSymbol(aprs_symbol);
    if (aprs_beacon) APRS_printSettings(serialdb) ;
    delay(500UL) ;
 
@@ -775,8 +858,8 @@ while(serialgps->available() > 0 ) {
 
          if ( gps.location.isValid() )  {
              char datebuf[20] ; 
-             sprintf(datebuf,"%4d-%02d-%02d %02d:%02d:%02d", 
-                  gps.date.year(), gps.date.month(), gps.date.day(),
+             sprintf(datebuf,"%02d-%02d %02d:%02d:%02d", 
+                  gps.date.month(), gps.date.day(),
                   gps.time.hour(), gps.time.minute(), gps.time.second()
                  ) ;
             mylog.send(datebuf) ;

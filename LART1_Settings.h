@@ -15,8 +15,8 @@
 // set your call sign and ssid in the config file
 // 
 
-// default message comment
-#define APRS_COMMENT "LART1 Track"
+// default message comment (max of 35 characters) 
+#define APRS_COMMENT "LART1 Tracker v1"
 
 // DRA818 Transceiver 
 // APRS 2 meter tx and rx frequency for North America  (134-174MHz) 
@@ -32,19 +32,13 @@
 #define SQUELCH 2 
 // transeiver channel  bandwidth (0=12.5kHz, 1=25kHz) 
 #define BW 0
-// transciver filter settings 
-// note: "true" bypasses the  filter (turns the filter off), "false"  sets to normal mode (turns on) 
-// yes, this is confusing!
-#define FILTER_PREMPHASIS false
-#define FILTER_HIGHPASS true
-#define FILTER_LOWPASS true
 
 // APRS TNC settings
 // transciver uses open squelch (must set this to true, if SQUELCH is set to  0 ) 
 #define OPEN_SQUELCH false
 
 // Destination Address (does not need to be changed)
-#define APRS_DEST "APZMDM"
+#define APRS_DEST "APZCCR"
 
 // APRS Path 1 Routing 
 #define PATH1 "WIDE1"
@@ -58,17 +52,27 @@
 #define TAIL 50L
 
 // APRS Symbol
-// see: http://www.aprs.net/vm/DOS/SYMBOLS.HTM
-// short list of symbols
-// 'n' Plain Node
-// '-' House QTH
-// '/' Dot
+// see: http://www.aprs.net/symbols/symbols-new.txt
+// short list of basic symbols
+// 'n' Node (bulls eye) 
+// '-' House
+// '/' Red Dot
 // '0'-'9' Numeral Circle
-// '>' Car
-// 'R' RV
-// '[' Runner
-// 'b' Bike
-// 'p' Rover (puppy)
+// '>' Car 
+// '<' Motorcycle
+// 'k' Truck
+// 'R' RV 
+// '[' Human
+// 'b' Bike 
+// 'p' Rover 
+// 'o' EOC
+// ';' Portable Operation (tent) 
+// 'E' Special Events (eyeball)
+// short list of alternate table symbols
+// '-' House 
+// ';' Park/Picnic event
+// 'o' small circle
+// 'k' SUV
 #define SYMBOL 'n' 
 
 #define USE_ALT_SYM_TABLE false 
