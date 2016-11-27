@@ -37,7 +37,7 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "Beta-0.999u"
+#define VERSION "Beta-0.999v"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
 
@@ -58,6 +58,8 @@
 #define LED_TX 49
 #define LED_RX 46
 #define LED_GPS 36
+
+#define LED_13 13
 //
 // Transceiver Ctl pins
 // PTT pin (don't change, the pin is used by Port Manipulation later on) 
@@ -120,6 +122,9 @@ unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
 unsigned long lastgpsupdate = 0 ;
 bool forcedisplay = false ;
+
+unsigned long update_led = 0 ;
+unsigned long update_led_interval = 500UL ;
 
 
 int sent_count=0 ;
@@ -451,14 +456,17 @@ void testleds(void) {
    pinMode(LED_TX,OUTPUT) ;
    pinMode(LED_RX,OUTPUT) ;
    pinMode(LED_GPS,OUTPUT) ;
+   pinMode(LED_13,OUTPUT) ;
 
    digitalWrite(LED_TX,HIGH) ;
    digitalWrite(LED_RX,HIGH);
    digitalWrite(LED_GPS,HIGH) ;
+   digitalWrite(LED_13,HIGH) ;
    delay(1000) ;
    digitalWrite(LED_TX,HIGH) ;
    digitalWrite(LED_RX,LOW);
    digitalWrite(LED_GPS,LOW) ;
+   digitalWrite(LED_13,LOW) ;
    delay(1000) ;
    digitalWrite(LED_TX,LOW);
    digitalWrite(LED_RX,HIGH) ;
@@ -467,6 +475,9 @@ void testleds(void) {
    digitalWrite(LED_GPS,HIGH) ;
    delay(1000) ;
    digitalWrite(LED_GPS,LOW) ;
+   digitalWrite(LED_13,HIGH) ;
+   delay(1000) ;
+   digitalWrite(LED_13,LOW) ;
 } 
 
 // halt command
@@ -515,6 +526,7 @@ void setup()
    // keeps the DRA818 active
    pinMode(PD, OUTPUT) ;
    digitalWrite(PD, HIGH) ;
+
 
    // initialize string variables 
    strcpy(aprs_comment,APRS_COMMENT) ;
@@ -710,12 +722,18 @@ bool lastpositionsent = false ;
 void loop()
 {
 
-
+if ( ( millis() - update_led) > update_led_interval ) {
+   digitalWrite(LED_13,LOW) ;
+   update_led = millis() ;
+}
 
 // process the gps packets
 while(serialgps->available() > 0 ) { 
        
-   if ( gps.encode( serialgps->read() ) )  
+    // when we get a gps message
+   if ( gps.encode( serialgps->read() ) )  {
+       digitalWrite(LED_13,HIGH) ;
+       update_led = millis() ;
 
        if( gps.location.isValid() ) {
           double dmh ; 
@@ -748,6 +766,7 @@ while(serialgps->available() > 0 ) {
        if ( gps.altitude.isValid() ) {
            alt = (int) gps.altitude.feet() ;
        } // end altitude update 
+    }
 
 } // end readgps 
 
