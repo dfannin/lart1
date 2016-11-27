@@ -32,6 +32,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define _GPRMCterm   "GPRMC"
 #define _GPGGAterm   "GPGGA"
 
+// Define the newer sentences for GNSS receivers
+#define _GPRMCterm1   "GNRMC"
+#define _GPGGAterm1   "GNGGA"
+
 TinyGPSPlus::TinyGPSPlus()
   :  parity(0)
   ,  isChecksumTerm(false)
@@ -211,8 +215,16 @@ bool TinyGPSPlus::endOfTermHandler()
   {
     if (!strcmp(term, _GPRMCterm))
       curSentenceType = GPS_SENTENCE_GPRMC;
+#ifdef _GPRMCterm1
+    else if (!strcmp(term, _GPRMCterm1))
+      curSentenceType = GPS_SENTENCE_GPRMC;
+#endif
     else if (!strcmp(term, _GPGGAterm))
       curSentenceType = GPS_SENTENCE_GPGGA;
+#ifdef _GPGGAterm1
+    else if (!strcmp(term, _GPGGAterm1))
+      curSentenceType = GPS_SENTENCE_GPGGA;
+#endif
     else
       curSentenceType = GPS_SENTENCE_OTHER;
 
