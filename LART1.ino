@@ -119,7 +119,7 @@ unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
 unsigned long lastgpsupdate = 0 ;
-bool forcedisplay = false ;
+unsigned long forcedisplay = 0;
 
 
 int sent_count=0 ;
@@ -833,12 +833,10 @@ while(serialgps->available() > 0 ) {
            // if its time, send out the location
            if ( (millis() - lastupdate) > update_beacon ) {
               lastupdate = millis() ;
-              mylog.send(F("sending loc"));
               locationUpdate(lat,lon,alt,0,1,0,0) ;
               sent_count++ ;
               lastpositionsent = true ;
-              forcedisplay = true ; 
-
+              forcedisplay = lastupdate;
           }
        }
    }
@@ -861,10 +859,11 @@ while(serialgps->available() > 0 ) {
     bklightstate = backlight(bklightstate) ;
 #endif
 
-   // update the display 
-   if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
-         lastupdatedisplay = millis() ;
-         forcedisplay = false ;
+    // update the display
+    unsigned long t = millis();
+    if ((forcedisplay > 0 && forcedisplay + 3000 < t && forcedisplay + 3000 > lastupdatedisplay) || (t - lastupdatedisplay) > UPDATE_DISPLAY) {
+        lastupdatedisplay = t;
+        forcedisplay = 0;
 
          sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
          mylog.send(buf) ;
@@ -885,7 +884,5 @@ while(serialgps->available() > 0 ) {
          // update gps led
 
          digitalWrite(LED_GPS,gps.location.isValid()) ;
-
-     } 
-
+    }
 }
