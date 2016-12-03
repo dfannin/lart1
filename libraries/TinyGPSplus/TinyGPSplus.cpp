@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define _GPGGAterm   "GPGGA"
 
 // Define the newer sentences for GNSS receivers
-#define _GPRMCterm1   "GNRMC"
-#define _GPGGAterm1   "GNGGA"
+// #define _GPRMCterm1   "GNRMC"
+// #define _GPGGAterm1   "GNGGA"
 
 TinyGPSPlus::TinyGPSPlus()
   :  parity(0)

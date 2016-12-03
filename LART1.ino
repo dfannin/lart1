@@ -37,9 +37,10 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "Beta-0.999v"
+#define VERSION "Beta-0.999w"
 #define ADC_REFERENCE REF_5V
 #define DEBUG_APRS_SETTINGS false
+// #define DISPLAY_GUARD  true
 
 // setting DRA818 Filter settings
 // transciver filter settings 
@@ -121,7 +122,11 @@ unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
 unsigned long lastgpsupdate = 0 ;
+#ifdef DISPLAY_GUARD
 unsigned long forcedisplay = 0;
+#else
+bool forcedisplay = false;
+#endif
 
 unsigned long update_led = 0 ;
 unsigned long update_led_interval = 500UL ;
@@ -214,7 +219,8 @@ void processPacket()
           }
 
           strcat(outbuf,tmpbuf) ;
-          mylog.send(outbuf) ;
+          serialdb->println(outbuf) ;
+          // mylog.send(outbuf) ;
       }
 
 
@@ -538,7 +544,6 @@ void setup()
 
    serialdb->println(F("Start.")) ;
 
-   testleds() ;
 
    dra_serial->begin(DRA818_PORT_BAUD) ;
    serialgps->begin(GPS_PORT_BAUD) ;
@@ -553,6 +558,10 @@ void setup()
 #endif
 
    mylog.send(F("LART/1 APRS TRAK")) ;
+   delay(1000) ;
+   mylog.send(F("LED Test")) ;
+
+   testleds() ;
 
    if ( !SD.begin(4) ) {
        mylog.send(F("sd init fail")) ; 
@@ -845,17 +854,21 @@ while(serialgps->available() > 0 ) {
               }
            } 
 
-           // sprintf(buf,"up beacon %lu",update_beacon) ;
-           // mylog.send(buf) ;
-
-
            // if its time, send out the location
            if ( (millis() - lastupdate) > update_beacon ) {
               lastupdate = millis() ;
               locationUpdate(lat,lon,alt,0,1,0,0) ;
+              delay(50) ;
+              serialdb->println(F("location sent")) ;
+
               sent_count++ ;
               lastpositionsent = true ;
+#ifdef DISPLAY_GUARD
               forcedisplay = lastupdate;
+#else
+              forcedisplay = true;
+
+#endif
           }
        }
    }
@@ -879,10 +892,20 @@ while(serialgps->available() > 0 ) {
 #endif
 
     // update the display
+#ifdef DISPLAY_GUARD
     unsigned long t = millis();
-    if ((forcedisplay > 0 && forcedisplay + 3000 < t && forcedisplay + 3000 > lastupdatedisplay) || (t - lastupdatedisplay) > UPDATE_DISPLAY) {
+    if ( ( forcedisplay > 0 
+           && forcedisplay + 3000 < t 
+           && forcedisplay + 3000 > lastupdatedisplay
+          )
+          || (t - lastupdatedisplay) > UPDATE_DISPLAY) {
         lastupdatedisplay = t;
         forcedisplay = 0;
+#else 
+        if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
+        lastupdatedisplay = millis() ;
+        forcedisplay = false ;
+#endif
 
          sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
          mylog.send(buf) ;
