@@ -13,7 +13,7 @@ Unlike commerical units, this tracker was designed for low cost and easy of use.
 + Reads configuration from SD card (and can writes log file)
 + Send APRS position reports (fields sent: lat/lon/altitude/comments)
 + Adaptive Interval Beacon Mode (NotSoSmart_Beacon mode) 
-    + adjusts update intervals based on degree of position change (includes change precision setting) 
+    + adjusts update intervals based on degree of position change (mph thresholding) 
 + Adjustable Update Intervals 
 + Adjustable APRS packet settings
     + path routing, dest, preamble, tail, symbol 
@@ -36,6 +36,28 @@ LART1 requires/assumes the following hardware:
 # Dependencies
 requires the following libraries to be installed in your Arduino Sketchbook `libraries/` directory. 
 These libraries have been modified to work with the LART tracker code (bug fixes and extensions), so you'll need to use the version provided in the repository, and install them in your Arduino library. 
+
+# Installation
++ Download the zip file and unzip to a temporary location
+    + `unzip lart1-master.zip`
+    + `cd lart1-master
++ Find your Arduino directory location `<ARDUINO>`
+    + default for Linux: `$HOME/Sketchbook`
+    + default for Mac : `$HOME/Documents/Arduino`
+    + default for Windows : `My Documents\Arduino`
++ Move the library directories to your Arduino libraries location:
+    + Linux/Mac: `cp -a libraries/* <ARDUINO>/libraries/`
+    + Windows: copy the directories under `libraries/` to `<ARDUINO>\libraries\`
++ Create a LART1 sketchbook directory and move the src files
+    + Linux/Mac:
+        + `mkdir <ARDUINO>/LART1`
+        + `cp -a *.ino *.h *.cpp License <ARDUINO>/LART1/`
+    + Windows:
+        + create new directory `<ARDUINO>/LART1`
+        + copy *.ino *.h *.cpp License to this directory
++ Start up the Arduino IDE (or close and restart it if it was open)
+    + open "File->Sketchbook->LARK1"
+    + compile and upload the sketch to the  Arduino
 
 # References
 + [MicroModem Circuit](https://github.com/markqvist/MicroModem). 
