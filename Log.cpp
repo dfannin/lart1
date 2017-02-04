@@ -6,7 +6,7 @@ Log::Log(void){}
 
 void Log::Log_Init(Stream *serial, LiquidCrystal_I2C *lcd, int lcdcol, int lcdrow){
     this->serial = serial ;
-    for( int i ; i < 3 ; i++ ) { 
+    for( int i=0 ; i < 3 ; i++ ) { 
         strcpy(this->line[i],"") ;
     }
     this->lcd = lcd ;

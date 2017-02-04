@@ -53,4 +53,7 @@
  
 24,60000   # *** LCD Backlight ON interval (ms) default=60000 ms (noop if OPTION_LCD is false)
 25,1200000 # UPDATE_BEACON_FIXED (ms) default=1200000 ms , sets fixed update interval or stopped interval (NoSoSmart mode)
-26,60000   # UPDATE_BEACON_MOVING (ms) default = 60000 ms , sets interval when moving
+26,90000   # UPDATE_BEACON_MOVING (ms) default = 60000 ms , sets interval when moving
+
+# position change threshold
+27,5       # MPH_THRESHOLD triggers positition change if speed exceeds this number (in Miles per hour)

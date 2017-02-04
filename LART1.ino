@@ -37,10 +37,11 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "Beta-0.999w"
+#define VERSION "Beta-0.999x"
 #define ADC_REFERENCE REF_5V
-#define DEBUG_APRS_SETTINGS false
-// #define DISPLAY_GUARD  true
+// various debug flags
+// #define DEBUG_APRS_SETTINGS
+// #define DEBUG_POSITIONCHECK
 
 // setting DRA818 Filter settings
 // transciver filter settings 
@@ -122,11 +123,8 @@ unsigned long lastcheck = 0 ;
 unsigned long lastupdate = 0 ;
 unsigned long lastupdatedisplay = 0 ;
 unsigned long lastgpsupdate = 0 ;
-#ifdef DISPLAY_GUARD
-unsigned long forcedisplay = 0;
-#else
-bool forcedisplay = false;
-#endif
+
+float mph_threshold = MPH_THRESHOLD ;
 
 unsigned long update_led = 0 ;
 unsigned long update_led_interval = 500UL ;
@@ -365,6 +363,9 @@ void setParam(int p, const char *buf) {
         case 26:
             update_beacon_moving =  atol(buf) ;
             break ;
+        case 27:
+            mph_threshold =  atof(buf) ;
+            break ;
         default:
             break ;
     } 
@@ -520,7 +521,6 @@ return lcdstate ;
 
 
 
-
 void setup()
 {
    // initializes the PTT to high or low
@@ -667,6 +667,7 @@ void setup()
        myabort() ;
    }
 
+
    delay(500UL);
 
    dra.setPTT(PTT_OFF);
@@ -694,13 +695,22 @@ void setup()
 
    sprintf(buf,"NotSmart Mode %d",notsosmart_beacon) ;
    mylog.send(buf) ;
+
+   if ( notsosmart_beacon ) {
+      dtostrf(mph_threshold, 6, 1, fbuf) ;
+      sprintf(buf,"MPH Thres: %s",fbuf) ;
+      mylog.send(buf) ;
+   }
+
+   delay(500UL) ;
+
+
 #ifdef APRS_PTT_TX_LOW 
    sprintf(buf,"PTT Logic LOW") ;
 #else
    sprintf(buf,"PTT Logic HIGH") ;
 #endif 
    mylog.send(buf) ;
-   delay(500UL) ;
 
    btn1.debounceTime = 50 ;
    btn1.multiclickTime = 500 ;
@@ -723,8 +733,10 @@ double prevlond = 0.0 ;
 
 int alt = 0 ;
 
-bool position_changed = false ;
-bool lastpositionsent = false ;
+bool position_triggered = false ;
+bool firsttimethru = true ;
+
+double mph ;
 
 
 
@@ -781,39 +793,38 @@ while(serialgps->available() > 0 ) {
 
    // check if position has changed
    if ( ( millis() - lastgpsupdate )   >   30000  ) { 
+           double elapsedsec =   ( millis() - lastgpsupdate ) / 1000.0 ;
            lastgpsupdate = millis() ;
-           // position change
-           //  1 100th-second = 60 feet @ 38 lat
-           //  1 100th-second = 48 feet @  lon (fairly constant) 
-           // for precision "6" , 13 miles per hour
-           /*
-           // calculate distance (in miles) 
-           double distM  = TinyGPSPlus.distanceBetween(latd,lond, prevlatd, prevlond) * 0.6214 ; 
 
-           // convert to MPH
-           double mph = ( distM / 15 ) * 3600 ;  
+           if ( gps.location.isValid() ) {
+               // caluclate distance
+               double dist  = gps.distanceBetween(latd, lond, prevlatd, prevlond) ;
+               // convert to miles
+               dist  = dist * 0.0006214 ; 
 
-           if ( mph > 8.0 ) {
+               mph =  ( dist / elapsedsec  ) * 3600.0 ;
 
-           }
-           */
-           
+               if ( mph >= mph_threshold ) {
+                   position_triggered = true ; 
+               } 
 
-           if ( strncmp(lat, prevlat, POSITION_CHANGE_PRECISION) != 0 ) {
-               strcpy(prevlat,lat) ;
+
+#ifdef DEBUG_POSITIONCHECK
+               char mbuf[20] ;
+               char dbuf[20] ;
+               dtostrf(mph, 6, 1, mbuf) ;
+               dtostrf(dist, 12, 4, dbuf) ;
+               sprintf(buf,"mph:%s d:%s",mbuf,dbuf) ;
+               mylog.send(buf) ;
+               sprintf(buf,"update beacon:%lu",update_beacon) ;
+               mylog.send(buf);
+#endif
+
                prevlatd = latd ;
-               position_changed = true ; 
-           } 
-
-
-           if ( strncmp(lon, prevlon, POSITION_CHANGE_PRECISION + 1 ) != 0 ) {
-               strcpy(prevlon,lon) ;
                prevlond = lond ;
-               position_changed = true ; 
-           }
+          }
+
    }
-
-
 
 
    // outer update check loop 
@@ -823,34 +834,18 @@ while(serialgps->available() > 0 ) {
        // don't do anything unless gps is valid
        if ( gps.location.isValid() )  {
 
-           // set the update_beacon interval
-           // for not so smart beacon mode , set it based on position changes
-           // for dumb beacon mode, uses UPDATE_BEACON_INIT first time through, then UPDATE_BEACON_FIXED
-           //
-           // Notsosmart algorithm
-           // if ( position changed ) 
-           // then interval = moving, sent out next time 
-           // else if ( lastposition was sent) 
-           //      then interval = fixed
-           //      else keep the previous one (fixed or moving) 
-           // 
-           //
            if ( notsosmart_beacon ) {
-              if ( position_changed ) {
+              if ( position_triggered ) {
                  update_beacon = update_beacon_moving ; 
-                 position_changed = false ;
-                 lastpositionsent = false ;
               } else {
-                 if (lastpositionsent) { 
-                    update_beacon = update_beacon_fixed ;
-                    lastpositionsent = false ;
-                 } 
+                 update_beacon = update_beacon_fixed ;
               } 
            } else { 
               // add this to make sure the location is sent first time thru the loop
-              if (lastpositionsent) {
-                 update_beacon = update_beacon_fixed ;
-                 lastpositionsent = false ;
+              if (firsttimethru) {
+                update_beacon = update_beacon_moving ;
+              } else {
+                update_beacon = update_beacon_fixed ;
               }
            } 
 
@@ -858,17 +853,11 @@ while(serialgps->available() > 0 ) {
            if ( (millis() - lastupdate) > update_beacon ) {
               lastupdate = millis() ;
               locationUpdate(lat,lon,alt,0,1,0,0) ;
-              delay(50) ;
+              delay(25) ;
               serialdb->println(F("location sent")) ;
-
               sent_count++ ;
-              lastpositionsent = true ;
-#ifdef DISPLAY_GUARD
-              forcedisplay = lastupdate;
-#else
-              forcedisplay = true;
-
-#endif
+              position_triggered = false ;
+              firsttimethru = false ;
           }
        }
    }
@@ -891,40 +880,29 @@ while(serialgps->available() > 0 ) {
     bklightstate = backlight(bklightstate) ;
 #endif
 
-    // update the display
-#ifdef DISPLAY_GUARD
-    unsigned long t = millis();
-    if ( ( forcedisplay > 0 
-           && forcedisplay + 3000 < t 
-           && forcedisplay + 3000 > lastupdatedisplay
-          )
-          || (t - lastupdatedisplay) > UPDATE_DISPLAY) {
-        lastupdatedisplay = t;
-        forcedisplay = 0;
-#else 
-        if ( forcedisplay ||  (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
+        if ( (millis() - lastupdatedisplay) > UPDATE_DISPLAY ) {
         lastupdatedisplay = millis() ;
-        forcedisplay = false ;
-#endif
+        sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
+        mylog.send(buf) ;
 
-         sprintf(buf,"s:%d r:%d",sent_count,recv_count) ;
-         mylog.send(buf) ;
-
-         if ( gps.location.isValid() )  {
+        if ( gps.location.isValid() )  {
              char datebuf[20] ; 
              sprintf(datebuf,"%02d-%02d %02d:%02d:%02d", 
                   gps.date.month(), gps.date.day(),
                   gps.time.hour(), gps.time.minute(), gps.time.second()
                  ) ;
             mylog.send(datebuf) ;
-         } else {
+        } else {
             mylog.send(F("gps no fix")) ;
-         }
+        }
 
-         if ( DEBUG_APRS_SETTINGS) APRS_printSettings(serialdb) ;
+
+#ifdef DEBUG_APRS_SETTINGS
+        APRS_printSettings(serialdb) ;
+#endif
 
          // update gps led
 
-         digitalWrite(LED_GPS,gps.location.isValid()) ;
-    }
+         digitalWrite(LED_GPS, ( gps.location.isValid() && gps.location.isUpdated() ) ) ;
+       }
 }

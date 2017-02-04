@@ -91,8 +91,8 @@
 #define UPDATE_BEACON_FIXED 1200000L
 
 // timing is set to update to this interval
-// if the position changes more than POSITION_CHANGE_PRECISION
-#define UPDATE_BEACON_MOVING 60000L
+// if the position exceeds mph_threshold
+#define UPDATE_BEACON_MOVING 90000L
 
 // update beacon within  xx ms firs time through (for smart mode)  
 #define UPDATE_BEACON_INIT  30000L
@@ -109,13 +109,8 @@
 // DRA818 port speed
 #define DRA818_PORT_BAUD  9600
 
-
-// number of characters for testing if position has changed
-// 5 = DD MM    (approx 6068 feet of lat, 4800 feet for lon) @ 38 lat
-// 6 = DD MM S  (approx 600 feet of lat, 480 feet for lon) @ 38 lat
-// 7 = DD MM SS (approx 61 ft of changes for  lat, and 48 ft for lon @ 38 lat) 
-//               warning:  will result in freq updates due to gps noise variation )
-#define POSITION_CHANGE_PRECISION 6
+// if threshold exceeded, then trigger position change
+#define MPH_THRESHOLD  5.0
 
 // LCD row and column settings
 #define OPTION_LCD  true
