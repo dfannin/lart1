@@ -69,5 +69,6 @@ These libraries have been modified to work with the LART tracker code (bug fixes
 
 
 # Status
-This software is beta software, and is still in major update mode.
++ Version 1.000a  - first major release
+
 
