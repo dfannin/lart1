@@ -137,7 +137,11 @@ void APRS_setLat(const char *lat) {
     memset(latitude, 0, 9);
     int i = 0;
     while (i < 8 && lat[i] != 0) {
-        latitude[i] = lat[i];
+        if ( i < 4 && lat[i] == ' ' ) {
+            latitude[i] = '0' ;
+        } else {
+            latitude[i] = lat[i];
+        }
         i++;
     }
 }
@@ -146,7 +150,12 @@ void APRS_setLon(const char *lon) {
     memset(longtitude, 0, 10);
     int i = 0;
     while (i < 9 && lon[i] != 0) {
-        longtitude[i] = lon[i];
+        // check for space
+        if ( i < 5 && lon[i] == ' ' ) {
+            longtitude[i] = '0' ;
+        } else {
+            longtitude[i] = lon[i];
+        }
         i++;
     }
 }

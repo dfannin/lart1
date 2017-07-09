@@ -37,7 +37,7 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "1.000a"
+#define VERSION "1.001a"
 #define ADC_REFERENCE REF_5V
 // various debug flags
 // #define DEBUG_APRS_SETTINGS
@@ -726,8 +726,8 @@ char  lon[] = "00000.00W" ;
 double latd = 0.0 ;
 double lond = 0.0 ;
 
-char  prevlat[] =  "0000.00N" ;
-char  prevlon[] = "00000.00W" ;
+// char  prevlat[] =  "0000.00N" ;
+// char  prevlon[] = "00000.00W" ;
 double prevlatd = 0.0 ;
 double prevlond = 0.0 ;
 
