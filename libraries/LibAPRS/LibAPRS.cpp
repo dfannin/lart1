@@ -133,6 +133,12 @@ void APRS_setSymbol(char sym) {
     symbol = sym;
 }
 
+/*
+ * lat value is %7.2f + D{N,S} e.g.  '1234.56N'  
+ * leading padding are spaces e.g ' 123.45N'
+ * so leading zeros need to be added e.g. '0123.45N'
+ *
+ */
 void APRS_setLat(const char *lat) {
     memset(latitude, 0, 9);
     int i = 0;
@@ -146,11 +152,16 @@ void APRS_setLat(const char *lat) {
     }
 }
 
+/*
+ * lon value is %8.2f + D{E,W} e.g.  '11234.56E'  
+ * leading padding are spaces e.g '  123.45E'
+ * so leading zeros need to be added e.g. '00123.45E'
+ *
+ */
 void APRS_setLon(const char *lon) {
     memset(longtitude, 0, 10);
     int i = 0;
     while (i < 9 && lon[i] != 0) {
-        // check for space
         if ( i < 5 && lon[i] == ' ' ) {
             longtitude[i] = '0' ;
         } else {
