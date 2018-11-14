@@ -37,7 +37,7 @@
 #include "SD.h"
 #include "ClickButton.h"
 
-#define VERSION "1.001b"
+#define VERSION "1.002a"
 #define ADC_REFERENCE REF_5V
 // various debug flags
 // #define DEBUG_APRS_SETTINGS
@@ -161,7 +161,7 @@ void aprs_msg_callback(struct AX25Msg *msg)
    if(!gotPacket) {
       gotPacket = true ;
       memcpy(&incomingPacket, msg, sizeof(AX25Msg));
-      if (freeMemory() > msg->len) {
+      if (freeMemory() > (int16_t)  msg->len) {
          packetData = (uint8_t*) malloc(msg->len);
          memcpy(packetData,msg->info,msg->len);
          incomingPacket.info=packetData;
@@ -231,6 +231,17 @@ void processPacket()
 }
 
 
+void locationUpdate(const char *lat, const char *lon,int altitude)
+{
+   char comment[43] ; // max of 36 chars with PHG data extension, 43 chars  without
+   APRS_setLat(lat);
+   APRS_setLon(lon);
+   sprintf(comment,"/A=%06d%s",altitude,aprs_comment) ;
+   APRS_sendLoc(comment, strlen(comment),serialdb);
+}
+
+/*
+ simplifed in 1.002a
 
 void locationUpdate(const char *lat, const char *lon,int altitude, int height = 0 ,int power=1, int gain=0, int dir=0)
 {
@@ -244,6 +255,7 @@ void locationUpdate(const char *lat, const char *lon,int altitude, int height = 
    sprintf(comment,"/A=%06d%s",altitude,aprs_comment) ;
    APRS_sendLoc(comment, strlen(comment),serialdb);
 }
+*/
 
 
 double  ddtodmh(float dd) {
@@ -852,7 +864,7 @@ while(serialgps->available() > 0 ) {
            // if its time, send out the location
            if ( (millis() - lastupdate) > update_beacon ) {
               lastupdate = millis() ;
-              locationUpdate(lat,lon,alt,0,1,0,0) ;
+              locationUpdate(lat,lon,alt) ;
               delay(25) ;
               serialdb->println(F("location sent")) ;
               sent_count++ ;

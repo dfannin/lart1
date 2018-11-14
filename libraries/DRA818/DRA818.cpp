@@ -62,18 +62,18 @@ void DRA818::setFreq(float tx_freq, float rx_freq){
 
 // Refer to https://en.wikipedia.org/wiki/CTCSS for CTCSS values.
 void DRA818::setTXCTCSS(uint8_t ctcss){
-    if(ctcss>=0 && ctcss<=38){
+    if(ctcss<=38){
         this->tx_ctcss = ctcss;
     }
 }
 void DRA818::setRXCTCSS(uint8_t ctcss){
-    if(ctcss>= 0 && ctcss<=38){
+    if(ctcss<=38){
         this->rx_ctcss = ctcss;
     }
 }
 
 void DRA818::setSquelch(uint8_t sql){
-    if(sql >= 0 && sql<=8){
+    if(sql<=8){
         this->squelch = sql;
     }
 }
@@ -97,7 +97,7 @@ bool DRA818::writeFreq(void){
 }
 
 bool DRA818::setVolume(uint8_t vol){
-    if(vol>=1 && vol<=8){
+    if(vol >= 1 && vol<= 8){
         this->volume = vol;
     }
 
@@ -131,7 +131,7 @@ bool DRA818::setFilters(boolean preemph, boolean highpass, boolean lowpass){
 }
 
 void DRA818::setBW(uint8_t bw) {
-    if ( bw >= 0 && bw <=1 ) {
+    if ( bw <= 1 ) {
         this->bw = bw ;
     }
 }
@@ -147,7 +147,8 @@ void DRA818::setPTT(bool ptt) {
 
 void DRA818::clearinput(void) {
     while ( this->serial->available() > 0 ) {
-        char c = this->serial->read() ;
+       // char c = this->serial->read() ;
+       this->serial->read() ;
     }
 } 
 
@@ -160,7 +161,7 @@ void DRA818::readResponse() {
   
    // delay loop waiting for chars
     while ( ( millis() - rtimeout ) < 500) {
-        if ( this-serial->available() > 0 )  break ;
+        if ( this->serial->available() > 0 )  break ;
     } 
 
     rtimeout = millis() ;

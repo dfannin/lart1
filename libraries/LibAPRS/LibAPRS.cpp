@@ -285,9 +285,9 @@ void APRS_sendLoc(void *_buffer, size_t length, Stream *db) {
     if ( db != NULL ) { 
         db->print("Loc Pkt Sent:") ; 
         char pbuf[60] ; 
-        int i ; 
+        size_t i ; 
         for (i = 0 ; i < payloadLength ; i++ ) {
-            pbuf[i]  = (char *) packet[i] ; 
+            pbuf[i]  = (char) packet[i] ; 
         }
         pbuf[i] = '\0' ; 
 
@@ -350,9 +350,9 @@ void APRS_sendMsg(void *_buffer, size_t length, Stream *db) {
     if ( db != NULL ) { 
         db->print("Msg Pkt Sent:") ; 
         char pbuf[60] ; 
-        int i ; 
+        size_t i ; 
         for (i = 0 ; i < payloadLength ; i++ ) {
-            pbuf[i]  = (char *) packet[i] ; 
+            pbuf[i]  = (char) packet[i] ; 
         }
         pbuf[i] = '\0' ; 
 
